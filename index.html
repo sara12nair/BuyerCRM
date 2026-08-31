@@ -994,6 +994,50 @@ header {
   }
 }
 
+  .selection-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    background: #eff6ff;
+  }
+
+  .selection-toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .record-select { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+
+  .confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    background: rgba(15, 23, 42, .68);
+  }
+
+  .confirm-overlay.active { display: flex; }
+  .confirm-box {
+    width: min(460px, 100%);
+    padding: 22px;
+    border-radius: 14px;
+    background: white;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, .28);
+  }
+  .confirm-box h3 { margin-top: 0; }
+  .confirm-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+
+  @media screen and (max-width: 600px) {
+    .selection-toolbar { align-items: stretch; }
+    .selection-toolbar-actions { width: 100%; }
+    .selection-toolbar-actions button { flex: 1 1 145px; }
+  }
+
   </style>
 </head>
 <body>
@@ -1096,10 +1140,22 @@ header {
     </div>
 
     <div class="card">
+      <div class="selection-toolbar">
+        <div>
+          <strong id="selectedCount">0 records selected</strong>
+          <div id="selectionScope" style="font-size:.75rem; color:var(--text-muted); margin-top:2px;">Use filters, then select the records you need.</div>
+        </div>
+        <div class="selection-toolbar-actions">
+          <button type="button" id="toggleSelectFilteredBtn" onclick="toggleSelectAllFiltered()" class="btn-small" style="background:#475569; color:white;">☑ Select all filtered</button>
+          <button type="button" id="exportSelectedBtn" onclick="exportSelectedBuyers()" class="btn-small" style="background:#15803d; color:white;" disabled>📊 Export selected</button>
+          <button type="button" id="clearSelectionBtn" onclick="clearBuyerSelection()" class="btn-small" style="background:#64748b; color:white;" disabled>Clear selection</button>
+        </div>
+      </div>
       <div class="table-responsive">
         <table>
           <thead>
             <tr>
+              <th>Select</th>
               <th onclick="sortTable('name')">Buyer <span id="sort-name" class="sort-icon">▲▼</span></th>
               <th>Phone & Connect</th>
               <th onclick="sortTable('member')">Team <span id="sort-member" class="sort-icon">▲▼</span></th>
@@ -1341,6 +1397,19 @@ header {
     </div>
   </div>
 
+  <div id="postExportDialog" class="confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="postExportTitle">
+    <div class="confirm-box">
+      <h3 id="postExportTitle">Excel export started</h3>
+      <p id="postExportMessage"></p>
+      <p style="margin-bottom:8px;">Keep the records in the app, or type <strong>DELETE</strong> below to remove only the exported records.</p>
+      <input type="text" id="deleteConfirmText" autocomplete="off" placeholder="Type DELETE" oninput="updateBulkDeleteButton()">
+      <div class="confirm-actions">
+        <button type="button" onclick="keepExportedRecords()" class="btn-small" style="background:#475569; color:white;">Keep records</button>
+        <button type="button" id="confirmBulkDeleteBtn" onclick="deleteExportedRecords()" class="btn-small" style="background:#b91c1c; color:white;" disabled>Delete exported records</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // --- FIREBASE CONFIGURATION ---
     const firebaseConfig = {
@@ -1362,6 +1431,8 @@ header {
     let allNotesExpanded = false;
     let currentPage = 1;
     let rowsPerPage = 50;
+    let selectedBuyerIndices = new Set();
+    let pendingExportRecords = [];
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -1746,6 +1817,7 @@ header {
     function deleteBuyer(originalIndex) {
       if (confirm('Are you sure you want to delete this buyer record?')) {
         buyers.splice(originalIndex, 1);
+        selectedBuyerIndices.clear();
         persistData();
         renderTable();
       }
@@ -1831,6 +1903,176 @@ header {
       renderTable();
     }
 
+    function getFilteredBuyers() {
+      const agentFilter = document.getElementById('filterAgent').value;
+      const sourceFilter = document.getElementById('filterSource').value;
+      const stageFilter = document.getElementById('filterStage').value;
+      const searchKeyword = document.getElementById('searchKeyword').value.toLowerCase().trim();
+      const searchNotes = document.getElementById('searchNotes').value.toLowerCase().trim();
+      const fromDate = document.getElementById('fromDate').value;
+      const toDate = document.getElementById('toDate').value;
+      const hideInactive = document.getElementById('hideInactive').checked;
+
+      const filtered = buyers.map((b, idx) => ({ ...b, originalIndex: idx })).filter(b => {
+        if (hideInactive && (b.stage === 'Not Responding' || b.stage === 'Not Interested')) return false;
+        if (agentFilter !== 'ALL' && b.member !== agentFilter) return false;
+        if (sourceFilter !== 'ALL' && b.source !== sourceFilter) return false;
+        if (stageFilter !== 'ALL' && b.stage !== stageFilter) return false;
+        if (searchKeyword && !`${b.name} ${b.phone}`.toLowerCase().includes(searchKeyword)) return false;
+        if (searchNotes && !(b.notes || '').toLowerCase().includes(searchNotes)) return false;
+        if (fromDate && b.followUpDate && b.followUpDate < fromDate) return false;
+        if (toDate && b.followUpDate && b.followUpDate > toDate) return false;
+        if ((fromDate || toDate) && !b.followUpDate) return false;
+        return true;
+      });
+
+      if (currentSortColumn) {
+        filtered.sort((a, b) => {
+          const valA = (a[currentSortColumn] || '').toString().toLowerCase();
+          const valB = (b[currentSortColumn] || '').toString().toLowerCase();
+          if (valA < valB) return sortAscending ? -1 : 1;
+          if (valA > valB) return sortAscending ? 1 : -1;
+          return 0;
+        });
+      }
+      return filtered;
+    }
+
+    function toggleBuyerSelection(index, checked) {
+      if (checked) selectedBuyerIndices.add(index);
+      else selectedBuyerIndices.delete(index);
+      updateSelectionControls();
+    }
+
+    function toggleSelectAllFiltered() {
+      const filteredIndices = getFilteredBuyers().map(b => b.originalIndex);
+      if (!filteredIndices.length) {
+        alert('No filtered records are available to select.');
+        return;
+      }
+      const allSelected = filteredIndices.every(index => selectedBuyerIndices.has(index));
+      filteredIndices.forEach(index => allSelected ? selectedBuyerIndices.delete(index) : selectedBuyerIndices.add(index));
+      renderTable();
+    }
+
+    function clearBuyerSelection() {
+      selectedBuyerIndices.clear();
+      renderTable();
+    }
+
+    function updateSelectionControls(filteredBuyers = getFilteredBuyers()) {
+      selectedBuyerIndices.forEach(index => {
+        if (!buyers[index]) selectedBuyerIndices.delete(index);
+      });
+      const count = selectedBuyerIndices.size;
+      const filteredIndices = filteredBuyers.map(b => b.originalIndex);
+      const allFilteredSelected = filteredIndices.length > 0 && filteredIndices.every(index => selectedBuyerIndices.has(index));
+      document.getElementById('selectedCount').innerText = `${count} record${count === 1 ? '' : 's'} selected`;
+      document.getElementById('selectionScope').innerText = `${filteredIndices.length} record${filteredIndices.length === 1 ? '' : 's'} currently match the filters.`;
+      document.getElementById('toggleSelectFilteredBtn').innerText = allFilteredSelected ? '☐ Deselect all filtered' : '☑ Select all filtered';
+      document.getElementById('exportSelectedBtn').disabled = count === 0;
+      document.getElementById('clearSelectionBtn').disabled = count === 0;
+    }
+
+    function safeFilenamePart(value) {
+      return String(value || 'Selected').trim().replace(/[^a-z0-9_-]+/gi, '_').replace(/^_+|_+$/g, '') || 'Selected';
+    }
+
+    function exportSelectedBuyers() {
+      if (typeof XLSX === 'undefined') {
+        alert('Excel support is not available. Please check your internet connection and try again.');
+        return;
+      }
+      const selected = Array.from(selectedBuyerIndices).sort((a, b) => a - b)
+        .filter(index => buyers[index])
+        .map(index => ({ originalIndex: index, record: { ...buyers[index] }, fingerprint: JSON.stringify(buyers[index]) }));
+      if (!selected.length) {
+        alert('Please select at least one buyer record.');
+        return;
+      }
+
+      const worksheetData = selected.map(item => ({
+        'Buyer Name': item.record.name || '',
+        'Phone': item.record.phone || '',
+        'Team Member': item.record.member || 'Unassigned',
+        'Source': item.record.source || '',
+        'Temperature': item.record.status || '',
+        'Stage': item.record.stage || '',
+        'First Contact Date': item.record.firstContactDate || '',
+        'Last Contacted': item.record.lastContacted || '',
+        'Follow-up Date': item.record.followUpDate || '',
+        'Follow-up Time': item.record.followUpTime || '',
+        'Notes': item.record.notes || ''
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+      worksheet['!cols'] = [
+        { wch: 24 }, { wch: 16 }, { wch: 22 }, { wch: 18 }, { wch: 14 },
+        { wch: 22 }, { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 52 }
+      ];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Selected Buyers');
+
+      const memberNames = [...new Set(selected.map(item => item.record.member || 'Unassigned'))];
+      const memberPart = memberNames.length === 1 ? memberNames[0] : 'Multiple_Members';
+      const filename = `Buyer_Records_${safeFilenamePart(memberPart)}_${getArchiveTimestamp().replace(':', '')}.xlsx`;
+      XLSX.writeFile(workbook, filename);
+
+      pendingExportRecords = selected;
+      document.getElementById('postExportMessage').innerText = `${selected.length} selected record${selected.length === 1 ? '' : 's'} were sent to ${filename}.`;
+      document.getElementById('deleteConfirmText').value = '';
+      updateBulkDeleteButton();
+      document.getElementById('postExportDialog').classList.add('active');
+      document.getElementById('deleteConfirmText').focus();
+    }
+
+    function updateBulkDeleteButton() {
+      document.getElementById('confirmBulkDeleteBtn').disabled = document.getElementById('deleteConfirmText').value !== 'DELETE';
+    }
+
+    function keepExportedRecords() {
+      pendingExportRecords = [];
+      selectedBuyerIndices.clear();
+      document.getElementById('postExportDialog').classList.remove('active');
+      renderTable();
+    }
+
+    function downloadPreDeleteBackup() {
+      const backup = { createdBeforeBulkDelete: new Date().toISOString(), teamMembers, leadSources, stages, buyers };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `CRM_PreDelete_Backup_${getArchiveTimestamp().replace(':', '')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+
+    function deleteExportedRecords() {
+      if (document.getElementById('deleteConfirmText').value !== 'DELETE' || !pendingExportRecords.length) return;
+      const unchanged = pendingExportRecords.every(item => buyers[item.originalIndex] && JSON.stringify(buyers[item.originalIndex]) === item.fingerprint);
+      if (!unchanged) {
+        alert('Some exported records changed after the Excel export. Nothing was deleted. Please select and export them again.');
+        document.getElementById('postExportDialog').classList.remove('active');
+        pendingExportRecords = [];
+        selectedBuyerIndices.clear();
+        renderTable();
+        return;
+      }
+
+      downloadPreDeleteBackup();
+      const deleteIndices = pendingExportRecords.map(item => item.originalIndex).sort((a, b) => b - a);
+      deleteIndices.forEach(index => buyers.splice(index, 1));
+      const deletedCount = deleteIndices.length;
+      pendingExportRecords = [];
+      selectedBuyerIndices.clear();
+      document.getElementById('postExportDialog').classList.remove('active');
+      currentPage = 1;
+      persistData();
+      renderTable();
+      alert(`Deleted ${deletedCount} exported record${deletedCount === 1 ? '' : 's'}. A JSON safety backup was also downloaded.`);
+    }
+
     function changeRowsPerPage() {
       rowsPerPage = parseInt(document.getElementById('rowsPerPage').value, 10);
       currentPage = 1;
@@ -1852,43 +2094,8 @@ header {
     function renderTable() {
       const tbody = document.getElementById('buyerTableBody');
       if (!tbody) return;
-
-      const agentFilter = document.getElementById('filterAgent').value;
-      const sourceFilter = document.getElementById('filterSource').value;
-      const stageFilter = document.getElementById('filterStage').value;
-      const searchKeyword = document.getElementById('searchKeyword').value.toLowerCase().trim();
-      const searchNotes = document.getElementById('searchNotes').value.toLowerCase().trim();
-      const fromDate = document.getElementById('fromDate').value;
-      const toDate = document.getElementById('toDate').value;
-      const hideInactive = document.getElementById('hideInactive').checked;
-
-      let indexedBuyers = buyers.map((b, idx) => ({ ...b, originalIndex: idx }));
-
-      let filtered = indexedBuyers.filter(b => {
-        if (hideInactive && (b.stage === 'Not Responding' || b.stage === 'Not Interested')) return false;
-        if (agentFilter !== 'ALL' && b.member !== agentFilter) return false;
-        if (sourceFilter !== 'ALL' && b.source !== sourceFilter) return false;
-        if (stageFilter !== 'ALL' && b.stage !== stageFilter) return false;
-
-        if (searchKeyword && !`${b.name} ${b.phone}`.toLowerCase().includes(searchKeyword)) return false;
-        if (searchNotes && !(b.notes || '').toLowerCase().includes(searchNotes)) return false;
-
-        if (fromDate && b.followUpDate && b.followUpDate < fromDate) return false;
-        if (toDate && b.followUpDate && b.followUpDate > toDate) return false;
-        if ((fromDate || toDate) && !b.followUpDate) return false;
-
-        return true;
-      });
-
-      if (currentSortColumn) {
-        filtered.sort((a, b) => {
-          let valA = (a[currentSortColumn] || '').toString().toLowerCase();
-          let valB = (b[currentSortColumn] || '').toString().toLowerCase();
-          if (valA < valB) return sortAscending ? -1 : 1;
-          if (valA > valB) return sortAscending ? 1 : -1;
-          return 0;
-        });
-      }
+      const filtered = getFilteredBuyers();
+      updateSelectionControls(filtered);
 
       const totalRecords = filtered.length;
       const totalPages = Math.ceil(totalRecords / rowsPerPage) || 1;
@@ -1904,7 +2111,7 @@ header {
       document.getElementById('pageIndicator').innerText = `${currentPage} / ${totalPages}`;
 
       if (pageSlice.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#888; padding: 24px;">No matching records found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:#888; padding: 24px;">No matching records found.</td></tr>`;
         return;
       }
 
@@ -1920,6 +2127,7 @@ header {
 
         return `
           <tr>
+            <td data-label="Select"><input type="checkbox" class="record-select" aria-label="Select ${b.name}" onchange="toggleBuyerSelection(${actualIndex}, this.checked)" ${selectedBuyerIndices.has(actualIndex) ? 'checked' : ''}></td>
             <td data-label="Buyer"><strong>${b.name}</strong></td>
             
             <td data-label="Phone & Connect" style="white-space: nowrap;">
@@ -1994,6 +2202,7 @@ header {
       }
 
       buyers = buyers.filter(b => b.stage !== 'Not Responding' && b.stage !== 'Not Interested');
+      selectedBuyerIndices.clear();
       persistData();
       alert(`Successfully archived and purged ${inactiveBuyers.length} records.`);
     }
@@ -2018,7 +2227,8 @@ header {
           if (data.teamMembers) teamMembers = data.teamMembers;
           if (data.leadSources) leadSources = data.leadSources;
           if (data.stages) stages = data.stages;
-          if (data.buyers) buyers = data.buyers;
+        if (data.buyers) buyers = data.buyers;
+        selectedBuyerIndices.clear();
           persistData();
           alert(`✅ Success: Backup restored to cloud!`);
         } catch (err) { alert(`❌ Error loading file.`); }
@@ -2083,6 +2293,7 @@ header {
         }
 
         buyers = [];
+        selectedBuyerIndices.clear();
 
         for (let i = 1; i < rows.length; i++) {
           const r = rows[i];
