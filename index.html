@@ -1115,7 +1115,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡</span>
+        <span>Cloud Sync Active ⚡ · Build 260906-02</span>
       </div>
     </div>
   </header>
@@ -1170,7 +1170,7 @@ header {
       <h3>🔍 Buyer Directory & Quick Filters</h3>
       <div class="buyer-search-hero">
         <label for="searchKeyword">🔎 BUYER NAME / PHONE</label>
-        <input type="search" id="searchKeyword" enterkeyhint="done" autocomplete="off" placeholder="Search buyer name or phone • Enter clears all filters" oninput="currentPage=1; renderTable()">
+        <input type="search" id="searchKeyword" enterkeyhint="search" autocomplete="off" placeholder="Search buyer name or phone • Enter clears all filters" oninput="currentPage=1; renderTable()" onkeydown="return handleBuyerSearchKeydown(event)">
         <div class="buyer-search-help">Searches instantly. Press Enter to clear every filter and continue typing here.</div>
       </div>
       <div class="grid">
@@ -1519,6 +1519,9 @@ header {
       <h3 id="callNoteTitle">📞 Add Call Note</h3>
       <div id="callNoteBuyer" class="hint"></div>
       <input type="hidden" id="callNoteBuyerIndex" value="-1">
+      <input type="hidden" id="callNoteBuyerPhone" value="">
+      <input type="hidden" id="callNoteBuyerNameValue" value="">
+      <input type="hidden" id="callNoteBuyerId" value="">
       <div class="call-note-grid">
         <div>
           <label for="callOutcome">Call Outcome</label>
@@ -1556,7 +1559,7 @@ header {
   <div id="outcomeBackdrop" class="call-note-backdrop" role="dialog" aria-modal="true" aria-labelledby="outcomeDialogTitle">
     <div class="call-note-panel">
       <h3 id="outcomeDialogTitle">Update Buyer Outcome</h3>
-      <div id="outcomeBuyerName" class="hint"></div><input type="hidden" id="outcomeBuyerIndex" value="-1"><input type="hidden" id="outcomeMode">
+      <div id="outcomeBuyerName" class="hint"></div><input type="hidden" id="outcomeBuyerIndex" value="-1"><input type="hidden" id="outcomeBuyerPhone" value=""><input type="hidden" id="outcomeBuyerNameValue" value=""><input type="hidden" id="outcomeBuyerId" value=""><input type="hidden" id="outcomeMode">
       <div id="wonFields" class="call-note-grid" style="display:none">
         <div><label for="wonProjectName">Project Name *</label><input id="wonProjectName" placeholder="Project name"></div>
         <div><label for="wonPlotNumber">Plot Number *</label><input id="wonPlotNumber" placeholder="Plot number"></div>
@@ -1598,6 +1601,8 @@ header {
     let pendingExportRecords = [];
     let searchFocusedOnce = false;
     let crmToastTimer = null;
+    let activeCallBuyerRef = null;
+    let activeOutcomeBuyerRef = null;
     const PENDING_CALL_KEY = 'buyer-crm-pending-call-v1';
 
     function switchTab(tabId) {
@@ -1666,24 +1671,69 @@ header {
       return ['Referral', 'FB', 'Insta', 'Poster', 'Direct', 'Google', 'Whatsapp', 'self', 'WI'];
     }
 
-    function focusBuyerSearch() {
+    function focusBuyerSearch(bringIntoView = false) {
       const searchInput = document.getElementById('searchKeyword');
       if (!searchInput) return;
+      if (bringIntoView) searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
       try { searchInput.focus({ preventScroll: true }); } catch (_) { searchInput.focus(); }
     }
 
-    // Search input Enter clears every filter and immediately returns here.
-    document.addEventListener('DOMContentLoaded', () => {
-      const searchInput = document.getElementById('searchKeyword');
-      if (searchInput) {
-        searchInput.addEventListener('keydown', function(event) {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            resetFilters(true);
-          }
-        });
+    function returnToBuyerSearch() {
+      document.getElementById('callNoteBackdrop').classList.remove('active');
+      document.getElementById('outcomeBackdrop').classList.remove('active');
+      activeCallBuyerRef = null;
+      activeOutcomeBuyerRef = null;
+      focusBuyerSearch(true);
+      requestAnimationFrame(() => focusBuyerSearch(true));
+      setTimeout(() => focusBuyerSearch(true), 100);
+    }
+
+    function createBuyerId() {
+      if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') return globalThis.crypto.randomUUID();
+      return `buyer_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    function ensureBuyerId(buyer) {
+      if (buyer && !buyer.crmId) buyer.crmId = createBuyerId();
+      return buyer ? buyer.crmId : '';
+    }
+
+    function normalizePhoneForMatch(value) {
+      return String(value || '').replace(/\D/g, '');
+    }
+
+    function resolveDialogBuyerIndex(indexValue, phoneValue, buyerIdValue = '', buyerNameValue = '', activeRef = null) {
+      const referenceIndex = activeRef ? buyers.indexOf(activeRef) : -1;
+      if (referenceIndex >= 0) return referenceIndex;
+      const buyerId = String(buyerIdValue || '').trim();
+      if (buyerId) {
+        const idIndex = buyers.findIndex(buyer => String(buyer.crmId || '') === buyerId);
+        if (idIndex >= 0) return idIndex;
       }
-    });
+      const phone = normalizePhoneForMatch(phoneValue);
+      if (phone) {
+        const phoneIndex = buyers.findIndex(buyer => normalizePhoneForMatch(buyer.phone) === phone);
+        if (phoneIndex >= 0) return phoneIndex;
+      }
+      const name = String(buyerNameValue || '').trim().toLowerCase();
+      if (name) {
+        const nameMatches = buyers.map((buyer, index) => ({ buyer, index })).filter(item => String(item.buyer.name || '').trim().toLowerCase() === name);
+        if (nameMatches.length === 1) return nameMatches[0].index;
+      }
+      const index = Number(indexValue);
+      if (Number.isInteger(index) && buyers[index] && (!name || String(buyers[index].name || '').trim().toLowerCase() === name)) return index;
+      return -1;
+    }
+
+    // Inline handling keeps Enter inside the original user gesture, which is
+    // important for mobile browsers that reject delayed keyboard focus.
+    function handleBuyerSearchKeydown(event) {
+      if (event.key !== 'Enter') return true;
+      event.preventDefault();
+      if (event.stopPropagation) event.stopPropagation();
+      resetFilters(true);
+      return false;
+    }
 
     function getDefaultStages() {
       return ['New Lead', 'Contacted', 'Interested', 'Project Presented', 'Site Visit', 'Negotiation'];
@@ -1715,6 +1765,7 @@ header {
       failureReasons = sortAZ(failureReasons || getDefaultFailureReasons());
       teamMembers = [...(teamMembers || [])].sort((a,b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity:'base' }));
       buyers.forEach(b => {
+        ensureBuyerId(b);
         if (!b.outcome) b.outcome = b.stage === 'Closed / Won' ? 'Won' : (b.stage === 'Not Responding' || b.stage === 'Not Interested' ? 'Failed' : 'Active');
         if (!b.status) b.status = 'Warm';
       });
@@ -1813,7 +1864,11 @@ header {
     function openPostCallPanel(session) {
       const actualIndex = resolvePendingCallIndex(session), buyer = buyers[actualIndex];
       if (!buyer) { clearPendingCallSession(); return; }
+      activeCallBuyerRef = buyer;
       document.getElementById('callNoteBuyerIndex').value = actualIndex;
+      document.getElementById('callNoteBuyerPhone').value = buyer.phone || '';
+      document.getElementById('callNoteBuyerNameValue').value = buyer.name || '';
+      document.getElementById('callNoteBuyerId').value = ensureBuyerId(buyer);
       document.getElementById('callNoteBuyer').textContent = `${buyer.name}${buyer.phone ? ' • ' + buyer.phone : ''}`;
       document.getElementById('callOutcome').value = 'Connected';
       document.getElementById('callNoteText').value = '';
@@ -1842,13 +1897,16 @@ header {
 
     function skipPendingCallNote() {
       clearPendingCallSession();
-      document.getElementById('callNoteBackdrop').classList.remove('active');
-      focusBuyerSearch();
+      returnToBuyerSearch();
     }
 
     function savePostCallNote() {
-      const actualIndex = Number(document.getElementById('callNoteBuyerIndex').value), buyer = buyers[actualIndex];
-      if (!buyer) return;
+      const actualIndex = resolveDialogBuyerIndex(document.getElementById('callNoteBuyerIndex').value, document.getElementById('callNoteBuyerPhone').value, document.getElementById('callNoteBuyerId').value, document.getElementById('callNoteBuyerNameValue').value, activeCallBuyerRef), buyer = buyers[actualIndex];
+      if (!buyer) {
+        clearPendingCallSession();
+        returnToBuyerSearch();
+        return alert('The stored call session was cleared because that buyer could not be matched. Please open the buyer and add the note again.');
+      }
       const outcome = document.getElementById('callOutcome').value;
       const note = document.getElementById('callNoteText').value.trim();
       const oldStage = buyer.stage || '', newStage = document.getElementById('callStage').value || oldStage;
@@ -1862,10 +1920,9 @@ header {
       buyer.followUpDate = document.getElementById('callFollowUpDate').value;
       buyer.followUpTime = document.getElementById('callFollowUpTime').value;
       clearPendingCallSession();
-      document.getElementById('callNoteBackdrop').classList.remove('active');
       persistData();
       renderTable();
-      highlightBuyerRecord(actualIndex);
+      returnToBuyerSearch();
       showCrmToast(`Call note saved for ${buyer.name}`);
     }
 
@@ -1968,12 +2025,12 @@ header {
       persistData();renderTable();highlightBuyerRecord(actualIndex);showCrmToast(`Outcome updated: ${newOutcome}`,()=>undoOutcomeChange(actualIndex,oldOutcome,newOutcome));
     }
     function undoOutcomeChange(actualIndex,oldOutcome,changedOutcome,oldDetails=null){const buyer=buyers[actualIndex];if(!buyer||buyer.outcome!==changedOutcome)return showCrmToast('Outcome changed again; Undo was not applied.');buyer.outcome=oldOutcome;if(oldDetails){['wonProjectName','wonPlotNumber','wonAt','failedAtStage','failureReason','failedAt','followUpDate'].forEach(key=>{if(oldDetails[key]===undefined)delete buyer[key];else buyer[key]=oldDetails[key]})}const timestamp=getShortFormattedTimestamp(),log=`[${timestamp}]: Outcome change undone; restored to ${oldOutcome}`;buyer.notes=buyer.notes?`${buyer.notes}\n${log}`:log;persistData();renderTable();highlightBuyerRecord(actualIndex);showCrmToast(`Outcome restored to ${oldOutcome}`)}
-    function openOutcomeDialog(actualIndex,mode){const buyer=buyers[actualIndex];if(!buyer)return;document.getElementById('outcomeBuyerIndex').value=actualIndex;document.getElementById('outcomeMode').value=mode;document.getElementById('outcomeBuyerName').textContent=`${buyer.name} • Current stage: ${buyer.stage||'None'}`;document.getElementById('outcomeDialogTitle').textContent=mode==='Won'?'🏆 Mark Buyer as Won':'✖ Mark Buyer as Failed';document.getElementById('wonFields').style.display=mode==='Won'?'grid':'none';document.getElementById('failedFields').style.display=mode==='Failed'?'grid':'none';document.getElementById('wonProjectName').value=buyer.wonProjectName||'';document.getElementById('wonPlotNumber').value=buyer.wonPlotNumber||'';document.getElementById('wonRemarks').value='';document.getElementById('failedAtStage').value=buyer.stage||'None';document.getElementById('failureReasonSelect').innerHTML=failureReasons.map(r=>`<option value="${r}">${r}</option>`).join('');document.getElementById('failedRemarks').value='';document.getElementById('failedFollowUpDate').value=buyer.followUpDate||'';document.getElementById('outcomeBackdrop').classList.add('active')}
-    function closeOutcomeDialog(){document.getElementById('outcomeBackdrop').classList.remove('active')}
-    function saveOutcomeDialog(){const i=Number(document.getElementById('outcomeBuyerIndex').value),mode=document.getElementById('outcomeMode').value,buyer=buyers[i];if(!buyer)return;const oldOutcome=buyer.outcome||'Active',oldDetails={wonProjectName:buyer.wonProjectName,wonPlotNumber:buyer.wonPlotNumber,wonAt:buyer.wonAt,failedAtStage:buyer.failedAtStage,failureReason:buyer.failureReason,failedAt:buyer.failedAt,followUpDate:buyer.followUpDate},timestamp=getShortFormattedTimestamp();let log='';
+    function openOutcomeDialog(actualIndex,mode){const buyer=buyers[actualIndex];if(!buyer)return;activeOutcomeBuyerRef=buyer;clearPendingCallSession();document.getElementById('callNoteBackdrop').classList.remove('active');document.getElementById('outcomeBuyerIndex').value=actualIndex;document.getElementById('outcomeBuyerPhone').value=buyer.phone||'';document.getElementById('outcomeBuyerNameValue').value=buyer.name||'';document.getElementById('outcomeBuyerId').value=ensureBuyerId(buyer);document.getElementById('outcomeMode').value=mode;document.getElementById('outcomeBuyerName').textContent=`${buyer.name} • Current stage: ${buyer.stage||'None'}`;document.getElementById('outcomeDialogTitle').textContent=mode==='Won'?'🏆 Mark Buyer as Won':'✖ Mark Buyer as Failed';document.getElementById('wonFields').style.display=mode==='Won'?'grid':'none';document.getElementById('failedFields').style.display=mode==='Failed'?'grid':'none';document.getElementById('wonProjectName').value=buyer.wonProjectName||'';document.getElementById('wonPlotNumber').value=buyer.wonPlotNumber||'';document.getElementById('wonRemarks').value='';document.getElementById('failedAtStage').value=buyer.stage||'None';document.getElementById('failureReasonSelect').innerHTML=failureReasons.map(r=>`<option value="${r}">${r}</option>`).join('');document.getElementById('failedRemarks').value='';document.getElementById('failedFollowUpDate').value=buyer.followUpDate||'';document.getElementById('outcomeBackdrop').classList.add('active')}
+    function closeOutcomeDialog(){returnToBuyerSearch()}
+    function saveOutcomeDialog(){const i=resolveDialogBuyerIndex(document.getElementById('outcomeBuyerIndex').value,document.getElementById('outcomeBuyerPhone').value,document.getElementById('outcomeBuyerId').value,document.getElementById('outcomeBuyerNameValue').value,activeOutcomeBuyerRef),mode=document.getElementById('outcomeMode').value,buyer=buyers[i];if(!buyer){returnToBuyerSearch();return alert('The selected buyer could not be matched. Please open the outcome again.')}const oldOutcome=buyer.outcome||'Active',oldDetails={wonProjectName:buyer.wonProjectName,wonPlotNumber:buyer.wonPlotNumber,wonAt:buyer.wonAt,failedAtStage:buyer.failedAtStage,failureReason:buyer.failureReason,failedAt:buyer.failedAt,followUpDate:buyer.followUpDate},timestamp=getShortFormattedTimestamp();let log='';
       if(mode==='Won'){const project=document.getElementById('wonProjectName').value.trim(),plot=document.getElementById('wonPlotNumber').value.trim(),remarks=document.getElementById('wonRemarks').value.trim();if(!project||!plot)return alert('Project Name and Plot Number are required for a Won buyer.');buyer.wonProjectName=project;buyer.wonPlotNumber=plot;buyer.wonAt=new Date().toISOString();buyer.outcome='Won';log=`[${timestamp}]: WON — ${project}, Plot ${plot}${remarks?' — '+remarks:''}`}
       else{const reason=document.getElementById('failureReasonSelect').value,remarks=document.getElementById('failedRemarks').value.trim(),future=document.getElementById('failedFollowUpDate').value;if(!reason)return alert('Please select a failure reason.');buyer.outcome='Failed';buyer.failedAtStage=buyer.stage||'';buyer.failureReason=reason;buyer.failedAt=new Date().toISOString();if(future)buyer.followUpDate=future;log=`[${timestamp}]: FAILED after ${buyer.stage||'Unknown stage'} — ${reason}${remarks?' — '+remarks:''}${future?' — Possible follow-up: '+future:''}`}
-      buyer.notes=buyer.notes?`${buyer.notes}\n${log}`:log;closeOutcomeDialog();persistData();renderTable();highlightBuyerRecord(i);showCrmToast(`${buyer.name} marked ${mode}`,()=>undoOutcomeChange(i,oldOutcome,mode,oldDetails));
+      buyer.notes=buyer.notes?`${buyer.notes}\n${log}`:log;persistData();renderTable();returnToBuyerSearch();showCrmToast(`${buyer.name} marked ${mode}`,()=>undoOutcomeChange(i,oldOutcome,mode,oldDetails));
     }
 
     function renderDropdowns() {
@@ -2263,6 +2320,7 @@ header {
 
       const buyerRecord = {
         ...existingRecord,
+        crmId: existingRecord.crmId || createBuyerId(),
         name: name,
         firstContactDate: document.getElementById('buyerFirstContactDate').value,
         phone: phone,
@@ -2328,7 +2386,12 @@ header {
       document.getElementById('hideInactive').checked = true;
       currentPage = 1;
       renderTable();
-      if (focusSearch) setTimeout(() => focusBuyerSearch(), 40);
+      if (focusSearch) {
+        // First focus is synchronous; the later attempts cover mobile/PWA repaint.
+        focusBuyerSearch();
+        requestAnimationFrame(() => focusBuyerSearch());
+        setTimeout(() => focusBuyerSearch(), 80);
+      }
     }
 
     function getFilteredBuyers() {
