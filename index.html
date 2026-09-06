@@ -896,11 +896,50 @@ header {
     gap: 12px;
   }
 
-  /* Search box gets visual priority */
-  #searchKeyword {
-    border-color: #cfd2f4;
-    background: #fafaff;
+  /* Search is the primary action in the Buyer Directory */
+  .buyer-search-hero {
+    background: linear-gradient(135deg,#eef4ff,#f7f5ff);
+    border: 2px solid #8293e8;
+    border-radius: 15px;
+    padding: 13px;
+    margin: 11px 0 15px;
+    box-shadow: 0 5px 16px rgba(76,81,191,.10);
   }
+  .buyer-search-hero label { color:#25306f; font-size:.78rem; }
+  #searchKeyword {
+    border: 2px solid #6574d8;
+    background: #fff;
+    min-height: 49px;
+    font-size: 1.03rem;
+    font-weight: 600;
+    padding: 12px 14px;
+    box-shadow: inset 0 1px 2px rgba(15,23,42,.04);
+  }
+  #searchKeyword:focus {
+    border-color:#3346c8;
+    box-shadow: 0 0 0 4px rgba(79,70,229,.16);
+    outline:none;
+  }
+  .buyer-search-help { margin-top:6px; color:#596189; font-size:.72rem; }
+  .quick-stage-select { min-width:145px; font-size:11px; padding:5px 7px; font-weight:600; color:#27305f; background:#f5f7ff; }
+  .outcome-badge { display:inline-block; padding:5px 9px; border-radius:9px; font-size:.68rem; font-weight:800; text-transform:uppercase; }
+  .outcome-active{background:#dcfce7;color:#166534}.outcome-on-hold{background:#fef3c7;color:#92400e}.outcome-won{background:#d1fae5;color:#065f46}.outcome-failed{background:#fee2e2;color:#991b1b}
+  .outcome-actions { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; }
+  .outcome-actions button { width:auto; padding:4px 6px; font-size:10px; border-radius:7px; }
+  .buyer-return-highlight td { animation: buyerReturnGlow 2.8s ease-out; }
+  @keyframes buyerReturnGlow { 0%,35%{background:#fff1a8!important} 100%{background:transparent} }
+
+  .call-note-backdrop { display:none; position:fixed; inset:0; z-index:1200; background:rgba(15,23,42,.58); padding:12px; overflow:auto; }
+  .call-note-backdrop.active { display:block; }
+  .call-note-panel { width:min(560px,100%); margin:6vh auto; background:#fff; border-radius:18px; padding:18px; box-shadow:0 24px 70px rgba(15,23,42,.35); }
+  .call-note-panel h3 { margin:0 0 4px; color:#29336f; }
+  .call-note-grid { display:grid; grid-template-columns:1fr 1fr; gap:11px; margin-top:14px; }
+  .call-note-grid .wide { grid-column:1/-1; }
+  .call-note-actions { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; margin-top:15px; }
+  .crm-toast { display:none; position:fixed; left:50%; bottom:20px; transform:translateX(-50%); z-index:1400; background:#172033; color:#fff; padding:10px 12px; border-radius:11px; box-shadow:0 8px 26px rgba(0,0,0,.28); max-width:94%; align-items:center; gap:10px; }
+  .crm-toast.active { display:flex; }
+  .crm-toast button { width:auto; padding:6px 10px; background:#facc15; color:#422006; }
+  @media(max-width:620px){.call-note-grid{grid-template-columns:1fr}.call-note-grid .wide{grid-column:auto}.call-note-panel{margin:2vh auto}.buyer-search-hero{padding:10px}}
 
   /* Action buttons breathe */
   #tab-directory .card:nth-of-type(2) > div:last-child > div:last-child {
@@ -1129,6 +1168,11 @@ header {
     <!-- Single Clean Filter Card -->
     <div class="card">
       <h3>🔍 Buyer Directory & Quick Filters</h3>
+      <div class="buyer-search-hero">
+        <label for="searchKeyword">🔎 BUYER NAME / PHONE</label>
+        <input type="search" id="searchKeyword" enterkeyhint="done" autocomplete="off" placeholder="Search buyer name or phone • Enter clears all filters" oninput="currentPage=1; renderTable()">
+        <div class="buyer-search-help">Searches instantly. Press Enter to clear every filter and continue typing here.</div>
+      </div>
       <div class="grid">
         <div>
           <label for="filterAgent">Team Member</label>
@@ -1143,8 +1187,8 @@ header {
           <select id="filterStage" onchange="renderTable()"><option value="ALL">All Stages</option></select>
         </div>
         <div>
-          <label for="searchKeyword">Buyer Name / Phone</label>
-          <input type="text" id="searchKeyword" placeholder="Search name or phone..." oninput="renderTable()">
+          <label for="filterOutcome">Outcome</label>
+          <select id="filterOutcome" onchange="renderTable()"><option value="ALL">All Outcomes</option><option>Active</option><option>On Hold</option><option>Won</option><option>Failed</option></select>
         </div>
         <div>
           <label for="searchNotes">Notes / Footnotes</label>
@@ -1164,7 +1208,7 @@ header {
         <div style="display: flex; align-items: center; gap: 8px;">
           <input type="checkbox" id="hideInactive" checked onchange="renderTable()" style="width: 16px; height: 16px; accent-color: var(--primary);">
           <label for="hideInactive" style="margin: 0; text-transform: none; cursor: pointer; font-weight: 500;">
-            Hide Inactive (Not Responding / Not Interested)
+            Hide Failed / Inactive Buyers
           </label>
         </div>
         <div style="display: flex; gap: 8px;">
@@ -1197,6 +1241,7 @@ header {
               <th onclick="sortTable('source')">Source <span id="sort-source" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('status')">Status <span id="sort-status" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('stage')">Stage <span id="sort-stage" class="sort-icon">▲▼</span></th>
+              <th onclick="sortTable('outcome')">Outcome <span id="sort-outcome" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('lastContacted')">Last Contacted <span id="sort-lastContacted" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('followUpDate')">Follow Up <span id="sort-followUpDate" class="sort-icon">▲▼</span></th>
               <th>Notes</th>
@@ -1266,6 +1311,11 @@ header {
           <div>
             <label for="lifecycleStage">Stage</label>
             <select id="lifecycleStage" required></select>
+          </div>
+          <div>
+            <label for="leadOutcome">Outcome</label>
+            <select id="leadOutcome"><option>Active</option><option>On Hold</option></select>
+            <small style="display:block; margin-top:5px; color:var(--text-muted);">Use the Won / Failed actions in the directory so the required details are recorded.</small>
           </div>
           <div>
             <label for="followUpDate">Follow up</label>
@@ -1372,6 +1422,18 @@ header {
           <div id="stageListContainer" style="margin-top: 16px;"></div>
         </div>
 
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+          <h4 style="font-size:.9rem;text-transform:uppercase;color:var(--text-muted)">🌡️ Manage Temperature / Flag</h4>
+          <form onsubmit="event.preventDefault(); saveTemperature();"><input type="hidden" id="editTemperatureIndex" value="-1"><div class="grid"><div><label for="temperatureInput">Temperature Name</label><input id="temperatureInput" required placeholder="e.g. Very Hot"></div></div><div style="display:flex;gap:10px;margin-top:8px"><button id="temperatureSubmitBtn" class="btn-manage" style="width:auto">+ Add Temperature</button><button type="button" id="cancelTemperatureEditBtn" onclick="resetTemperatureForm()" style="display:none;width:auto;background:#64748b;color:white">Cancel</button></div></form>
+          <div id="temperatureListContainer" style="margin-top:16px"></div>
+        </div>
+
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+          <h4 style="font-size:.9rem;text-transform:uppercase;color:var(--text-muted)">✖ Manage Failure Reasons — A–Z</h4>
+          <form onsubmit="event.preventDefault(); addFailureReason();"><div class="grid"><div><label for="failureReasonInput">Failure Reason</label><input id="failureReasonInput" required placeholder="e.g. Documentation issue"></div></div><button class="btn-manage" style="margin-top:8px;width:auto">+ Add Reason</button></form>
+          <div id="failureReasonListContainer" style="margin-top:16px"></div>
+        </div>
+
         <!-- Add Lead Source -->
         <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
           <h4 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted);">➕ Add Lead Source</h4>
@@ -1384,6 +1446,7 @@ header {
             </div>
             <button type="submit" class="btn-manage" style="margin-top: 8px; width: auto;">+ Add Source</button>
           </form>
+          <div id="sourceListContainer" style="margin-top:16px"></div>
         </div>
 
       </details>
@@ -1450,6 +1513,65 @@ header {
     </div>
   </div>
 
+  <div id="callNoteBackdrop" class="call-note-backdrop" role="dialog" aria-modal="true" aria-labelledby="callNoteTitle">
+    <div class="call-note-panel">
+      <h3 id="callNoteTitle">📞 Add Call Note</h3>
+      <div id="callNoteBuyer" class="hint"></div>
+      <input type="hidden" id="callNoteBuyerIndex" value="-1">
+      <div class="call-note-grid">
+        <div>
+          <label for="callOutcome">Call Outcome</label>
+          <select id="callOutcome">
+            <option value="Connected">Connected</option>
+            <option value="No Answer">No Answer</option>
+            <option value="Call Back">Call Back</option>
+            <option value="Interested">Interested</option>
+            <option value="Not Interested">Not Interested</option>
+          </select>
+        </div>
+        <div>
+          <label for="callStage">Stage</label>
+          <select id="callStage"></select>
+        </div>
+        <div class="wide">
+          <label for="callNoteText">Call Note</label>
+          <textarea id="callNoteText" rows="4" placeholder="Jot down the buyer's response, requirement or next action..."></textarea>
+        </div>
+        <div>
+          <label for="callFollowUpDate">Next Follow-up Date</label>
+          <input id="callFollowUpDate" type="date">
+        </div>
+        <div>
+          <label for="callFollowUpTime">Follow-up Time</label>
+          <input id="callFollowUpTime" type="time">
+        </div>
+      </div>
+      <div class="call-note-actions">
+        <button type="button" class="btn-small" style="background:#64748b;color:white" onclick="skipPendingCallNote()">Skip for now</button>
+        <button type="button" class="btn-save" style="width:auto" onclick="savePostCallNote()">✓ Save Call Note</button>
+      </div>
+    </div>
+  </div>
+  <div id="outcomeBackdrop" class="call-note-backdrop" role="dialog" aria-modal="true" aria-labelledby="outcomeDialogTitle">
+    <div class="call-note-panel">
+      <h3 id="outcomeDialogTitle">Update Buyer Outcome</h3>
+      <div id="outcomeBuyerName" class="hint"></div><input type="hidden" id="outcomeBuyerIndex" value="-1"><input type="hidden" id="outcomeMode">
+      <div id="wonFields" class="call-note-grid" style="display:none">
+        <div><label for="wonProjectName">Project Name *</label><input id="wonProjectName" placeholder="Project name"></div>
+        <div><label for="wonPlotNumber">Plot Number *</label><input id="wonPlotNumber" placeholder="Plot number"></div>
+        <div class="wide"><label for="wonRemarks">Final Remarks</label><textarea id="wonRemarks" rows="3"></textarea></div>
+      </div>
+      <div id="failedFields" class="call-note-grid" style="display:none">
+        <div><label for="failedAtStage">Failed After Stage</label><input id="failedAtStage" readonly></div>
+        <div><label for="failureReasonSelect">Failure Reason *</label><select id="failureReasonSelect"></select></div>
+        <div class="wide"><label for="failedRemarks">Remarks</label><textarea id="failedRemarks" rows="3"></textarea></div>
+        <div><label for="failedFollowUpDate">Possible Future Follow-up</label><input id="failedFollowUpDate" type="date"></div>
+      </div>
+      <div class="call-note-actions"><button type="button" class="btn-small" style="background:#64748b;color:white" onclick="closeOutcomeDialog()">Cancel</button><button type="button" class="btn-save" style="width:auto" onclick="saveOutcomeDialog()">✓ Save Outcome</button></div>
+    </div>
+  </div>
+  <div id="crmToast" class="crm-toast"><span id="crmToastText"></span><button type="button" id="crmToastUndo" style="display:none">Undo</button></div>
+
   <script>
     // --- FIREBASE CONFIGURATION ---
     const firebaseConfig = {
@@ -1473,6 +1595,9 @@ header {
     let rowsPerPage = 50;
     let selectedBuyerIndices = new Set();
     let pendingExportRecords = [];
+    let searchFocusedOnce = false;
+    let crmToastTimer = null;
+    const PENDING_CALL_KEY = 'buyer-crm-pending-call-v1';
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -1486,12 +1611,16 @@ header {
         return onclickAttr && onclickAttr.includes(tabId);
       });
       if (activeBtn) activeBtn.classList.add('active');
+      if (tabId === 'tab-directory') setTimeout(() => focusBuyerSearch(), 80);
     }
 
     let teamMembers = [];
     let leadSources = [];
     let stages = [];
+    let temperatures = [];
+    let failureReasons = [];
     let buyers = [];
+    let workflowV2Ready = false;
 
     // --- REALTIME SYNC LISTENER FROM FIREBASE ---
     db.ref('teambuyers_crm').on('value', (snapshot) => {
@@ -1500,16 +1629,27 @@ header {
         teamMembers = data.teamMembers || getDefaultTeam();
         leadSources = data.leadSources || getDefaultSources();
         stages = data.stages || getDefaultStages();
+        temperatures = data.temperatures || getDefaultTemperatures();
+        failureReasons = data.failureReasons || getDefaultFailureReasons();
         buyers = data.buyers || [];
+        workflowV2Ready = data.workflowV2 === true;
       } else {
         teamMembers = getDefaultTeam();
         leadSources = getDefaultSources();
         stages = getDefaultStages();
+        temperatures = getDefaultTemperatures();
+        failureReasons = getDefaultFailureReasons();
         buyers = [];
+        workflowV2Ready = true;
         persistData();
       }
+      normalizeCrmMastersAndBuyers();
       renderDropdowns();
       renderTable();
+      if (!searchFocusedOnce) {
+        searchFocusedOnce = true;
+        setTimeout(() => focusBuyerSearch(), 120);
+      }
     });
 
     function getDefaultTeam() {
@@ -1525,23 +1665,50 @@ header {
       return ['Referral', 'FB', 'Insta', 'Poster', 'Direct', 'Google', 'Whatsapp', 'self', 'WI'];
     }
 
-    // Search input Enter key handler
+    function focusBuyerSearch() {
+      const searchInput = document.getElementById('searchKeyword');
+      if (!searchInput) return;
+      try { searchInput.focus({ preventScroll: true }); } catch (_) { searchInput.focus(); }
+    }
+
+    // Search input Enter clears every filter and immediately returns here.
     document.addEventListener('DOMContentLoaded', () => {
       const searchInput = document.getElementById('searchKeyword');
       if (searchInput) {
         searchInput.addEventListener('keydown', function(event) {
           if (event.key === 'Enter') {
             event.preventDefault();
-            renderTable();
-            this.value = '';
-            renderTable();
+            resetFilters(true);
           }
         });
       }
     });
 
     function getDefaultStages() {
-      return ['New Lead', 'Site Visit Scheduled', 'Negotiation', 'Closed / Won', 'Not Responding', 'Not Interested', 'Out of Coverage'];
+      return ['New Lead', 'Contacted', 'Interested', 'Project Presented', 'Site Visit', 'Negotiation'];
+    }
+
+    function getDefaultTemperatures() { return ['Hot', 'Warm', 'Cold']; }
+    function getDefaultFailureReasons() { return ['Budget mismatch', 'Chose another project', 'Family decision', 'Loan / finance issue', 'Location not suitable', 'Not interested', 'Not responding', 'Other', 'Purchase postponed']; }
+    function sortAZ(list) { return [...new Set((list || []).map(x => String(x || '').trim()).filter(Boolean))].sort((a,b) => a.localeCompare(b, undefined, { sensitivity:'base' })); }
+    function normalizeCrmMastersAndBuyers() {
+      const workflow = getDefaultStages(), legacyOutcomeStages = new Set(['Closed / Won','Not Responding','Not Interested']);
+      if (!workflowV2Ready) {
+        const customStages = (stages || []).filter(st => !workflow.includes(st) && !legacyOutcomeStages.has(st) && st !== 'Site Visit Scheduled');
+        stages = [...workflow, ...customStages];
+        workflowV2Ready = true;
+      } else {
+        stages = (stages || []).filter(st => !legacyOutcomeStages.has(st));
+        if (!stages.length) stages = getDefaultStages();
+      }
+      temperatures = [...new Set((temperatures || getDefaultTemperatures()).map(x => String(x || '').trim()).filter(Boolean))];
+      leadSources = sortAZ(leadSources || getDefaultSources());
+      failureReasons = sortAZ(failureReasons || getDefaultFailureReasons());
+      teamMembers = [...(teamMembers || [])].sort((a,b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity:'base' }));
+      buyers.forEach(b => {
+        if (!b.outcome) b.outcome = b.stage === 'Closed / Won' ? 'Won' : (b.stage === 'Not Responding' || b.stage === 'Not Interested' ? 'Failed' : 'Active');
+        if (!b.status) b.status = 'Warm';
+      });
     }
 
     function persistData() {
@@ -1549,7 +1716,10 @@ header {
         teamMembers,
         leadSources,
         stages,
-        buyers
+        temperatures,
+        failureReasons,
+        buyers,
+        workflowV2: true
       });
     }
 
@@ -1570,6 +1740,123 @@ header {
       const year = String(now.getFullYear()).slice(-2);
       const formattedTime = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
       return `${day}/${month}/${year} ${formattedTime}`;
+    }
+
+    function showCrmToast(message, undoAction = null) {
+      const box = document.getElementById('crmToast');
+      const text = document.getElementById('crmToastText');
+      const undo = document.getElementById('crmToastUndo');
+      if (!box || !text || !undo) return;
+      if (crmToastTimer) clearTimeout(crmToastTimer);
+      text.textContent = message;
+      undo.style.display = undoAction ? 'inline-block' : 'none';
+      undo.onclick = undoAction || null;
+      box.classList.add('active');
+      crmToastTimer = setTimeout(() => box.classList.remove('active'), undoAction ? 8000 : 3500);
+    }
+
+    function highlightBuyerRecord(actualIndex) {
+      requestAnimationFrame(() => {
+        const row = document.getElementById(`buyer-row-${actualIndex}`);
+        if (!row) return;
+        row.classList.remove('buyer-return-highlight');
+        void row.offsetWidth;
+        row.classList.add('buyer-return-highlight');
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+
+    function resolvePendingCallIndex(session) {
+      if (!session) return -1;
+      let index = buyers.findIndex(b => String(b.phone || '') === String(session.phone || '') && String(b.name || '') === String(session.name || ''));
+      if (index < 0 && Number.isInteger(Number(session.index)) && buyers[Number(session.index)]) index = Number(session.index);
+      return index;
+    }
+
+    function savePendingCallSession(session) {
+      try { localStorage.setItem(PENDING_CALL_KEY, JSON.stringify(session)); } catch (_) {}
+    }
+
+    function readPendingCallSession() {
+      try { return JSON.parse(localStorage.getItem(PENDING_CALL_KEY) || 'null'); } catch (_) { return null; }
+    }
+
+    function clearPendingCallSession() {
+      try { localStorage.removeItem(PENDING_CALL_KEY); } catch (_) {}
+    }
+
+    function beginBuyerCall(buyerIndex) {
+      const buyer = buyers[buyerIndex];
+      if (!buyer) return;
+      const timestamp = getShortFormattedTimestamp();
+      buyer.lastContacted = `Call started on ${timestamp}`;
+      savePendingCallSession({ index: buyerIndex, name: buyer.name || '', phone: buyer.phone || '', startedAt: Date.now(), leftApp: false });
+      persistData();
+    }
+
+    function openPostCallPanelForIndex(actualIndex) {
+      const buyer = buyers[actualIndex];
+      if (!buyer) return;
+      openPostCallPanel({ index: actualIndex, name: buyer.name || '', phone: buyer.phone || '', startedAt: Date.now(), leftApp: true });
+    }
+
+    function openPostCallPanel(session) {
+      const actualIndex = resolvePendingCallIndex(session), buyer = buyers[actualIndex];
+      if (!buyer) { clearPendingCallSession(); return; }
+      document.getElementById('callNoteBuyerIndex').value = actualIndex;
+      document.getElementById('callNoteBuyer').textContent = `${buyer.name}${buyer.phone ? ' • ' + buyer.phone : ''}`;
+      document.getElementById('callOutcome').value = 'Connected';
+      document.getElementById('callNoteText').value = '';
+      document.getElementById('callFollowUpDate').value = buyer.followUpDate || '';
+      document.getElementById('callFollowUpTime').value = buyer.followUpTime || '';
+      const stage = document.getElementById('callStage');
+      stage.innerHTML = stages.map(st => `<option value="${st}">${st}</option>`).join('');
+      stage.value = buyer.stage || stages[0] || '';
+      document.getElementById('callNoteBackdrop').classList.add('active');
+      setTimeout(() => document.getElementById('callNoteText').focus(), 100);
+    }
+
+    function maybeResumePendingCall() {
+      const session = readPendingCallSession();
+      if (!session || document.getElementById('callNoteBackdrop').classList.contains('active')) return;
+      if (Date.now() - Number(session.startedAt || 0) > 24 * 60 * 60 * 1000) { clearPendingCallSession(); return; }
+      if (session.leftApp || Date.now() - Number(session.startedAt || 0) > 3000) openPostCallPanel(session);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      const session = readPendingCallSession();
+      if (document.visibilityState === 'hidden' && session) { session.leftApp = true; savePendingCallSession(session); }
+      if (document.visibilityState === 'visible') setTimeout(maybeResumePendingCall, 300);
+    });
+    window.addEventListener('focus', () => setTimeout(maybeResumePendingCall, 450));
+
+    function skipPendingCallNote() {
+      clearPendingCallSession();
+      document.getElementById('callNoteBackdrop').classList.remove('active');
+      focusBuyerSearch();
+    }
+
+    function savePostCallNote() {
+      const actualIndex = Number(document.getElementById('callNoteBuyerIndex').value), buyer = buyers[actualIndex];
+      if (!buyer) return;
+      const outcome = document.getElementById('callOutcome').value;
+      const note = document.getElementById('callNoteText').value.trim();
+      const oldStage = buyer.stage || '', newStage = document.getElementById('callStage').value || oldStage;
+      if ((newStage === 'Not Responding' || newStage === 'Not Interested') && newStage !== oldStage && !confirm(`Move ${buyer.name} to ${newStage}?\n\nThis buyer may be hidden while Hide Inactive is enabled.`)) return;
+      const timestamp = getShortFormattedTimestamp();
+      let entry = `[${timestamp} Call - ${outcome}]` + (note ? `: ${note}` : '');
+      if (newStage !== oldStage) entry += ` | Stage: ${oldStage || 'None'} → ${newStage}`;
+      buyer.notes = buyer.notes ? `${buyer.notes}\n${entry}` : entry;
+      buyer.lastContacted = `Call on ${timestamp} • ${outcome}`;
+      buyer.stage = newStage;
+      buyer.followUpDate = document.getElementById('callFollowUpDate').value;
+      buyer.followUpTime = document.getElementById('callFollowUpTime').value;
+      clearPendingCallSession();
+      document.getElementById('callNoteBackdrop').classList.remove('active');
+      persistData();
+      renderTable();
+      highlightBuyerRecord(actualIndex);
+      showCrmToast(`Call note saved for ${buyer.name}`);
     }
 
     function logContactAction(buyerIndex, type) {
@@ -1624,9 +1911,6 @@ header {
       if (!buyer) return;
 
       buyer.status = newStatus;
-      if (newStatus === 'Not Interested' || newStatus === 'Not Responding') {
-        buyer.stage = newStatus;
-      }
 
       const timestamp = getShortFormattedTimestamp();
       const logEntry = `[${timestamp}]: Status flagged as ${newStatus}`;
@@ -1636,10 +1920,57 @@ header {
       renderTable();
     }
 
+    function quickUpdateStage(actualIndex, newStage) {
+      const buyer = buyers[actualIndex];
+      if (!buyer || !newStage || buyer.stage === newStage) return;
+      const oldStage = buyer.stage || '';
+      if ((newStage === 'Not Responding' || newStage === 'Not Interested') && !confirm(`Move ${buyer.name} to ${newStage}?\n\nThis buyer may disappear from the current list because Hide Inactive is enabled.`)) {
+        renderTable();
+        highlightBuyerRecord(actualIndex);
+        return;
+      }
+      buyer.stage = newStage;
+      const timestamp = getShortFormattedTimestamp();
+      const logEntry = `[${timestamp}]: Stage changed from ${oldStage || 'None'} to ${newStage}`;
+      buyer.notes = buyer.notes ? `${buyer.notes}\n${logEntry}` : logEntry;
+      persistData();
+      renderTable();
+      highlightBuyerRecord(actualIndex);
+      showCrmToast(`Stage updated: ${newStage}`, () => undoStageChange(actualIndex, oldStage, newStage));
+    }
+
+    function undoStageChange(actualIndex, oldStage, changedStage) {
+      const buyer = buyers[actualIndex];
+      if (!buyer || buyer.stage !== changedStage) return showCrmToast('Stage changed again; Undo was not applied.');
+      buyer.stage = oldStage;
+      const timestamp = getShortFormattedTimestamp();
+      const logEntry = `[${timestamp}]: Stage change undone; restored to ${oldStage || 'None'}`;
+      buyer.notes = buyer.notes ? `${buyer.notes}\n${logEntry}` : logEntry;
+      persistData();
+      renderTable();
+      highlightBuyerRecord(actualIndex);
+      showCrmToast(`Stage restored to ${oldStage || 'None'}`);
+    }
+
+    function quickSetOutcome(actualIndex, newOutcome) {
+      const buyer=buyers[actualIndex];if(!buyer||buyer.outcome===newOutcome)return;const oldOutcome=buyer.outcome||'Active';buyer.outcome=newOutcome;
+      const timestamp=getShortFormattedTimestamp(),log=`[${timestamp}]: Outcome changed from ${oldOutcome} to ${newOutcome}`;buyer.notes=buyer.notes?`${buyer.notes}\n${log}`:log;
+      persistData();renderTable();highlightBuyerRecord(actualIndex);showCrmToast(`Outcome updated: ${newOutcome}`,()=>undoOutcomeChange(actualIndex,oldOutcome,newOutcome));
+    }
+    function undoOutcomeChange(actualIndex,oldOutcome,changedOutcome,oldDetails=null){const buyer=buyers[actualIndex];if(!buyer||buyer.outcome!==changedOutcome)return showCrmToast('Outcome changed again; Undo was not applied.');buyer.outcome=oldOutcome;if(oldDetails){['wonProjectName','wonPlotNumber','wonAt','failedAtStage','failureReason','failedAt','followUpDate'].forEach(key=>{if(oldDetails[key]===undefined)delete buyer[key];else buyer[key]=oldDetails[key]})}const timestamp=getShortFormattedTimestamp(),log=`[${timestamp}]: Outcome change undone; restored to ${oldOutcome}`;buyer.notes=buyer.notes?`${buyer.notes}\n${log}`:log;persistData();renderTable();highlightBuyerRecord(actualIndex);showCrmToast(`Outcome restored to ${oldOutcome}`)}
+    function openOutcomeDialog(actualIndex,mode){const buyer=buyers[actualIndex];if(!buyer)return;document.getElementById('outcomeBuyerIndex').value=actualIndex;document.getElementById('outcomeMode').value=mode;document.getElementById('outcomeBuyerName').textContent=`${buyer.name} • Current stage: ${buyer.stage||'None'}`;document.getElementById('outcomeDialogTitle').textContent=mode==='Won'?'🏆 Mark Buyer as Won':'✖ Mark Buyer as Failed';document.getElementById('wonFields').style.display=mode==='Won'?'grid':'none';document.getElementById('failedFields').style.display=mode==='Failed'?'grid':'none';document.getElementById('wonProjectName').value=buyer.wonProjectName||'';document.getElementById('wonPlotNumber').value=buyer.wonPlotNumber||'';document.getElementById('wonRemarks').value='';document.getElementById('failedAtStage').value=buyer.stage||'None';document.getElementById('failureReasonSelect').innerHTML=failureReasons.map(r=>`<option value="${r}">${r}</option>`).join('');document.getElementById('failedRemarks').value='';document.getElementById('failedFollowUpDate').value=buyer.followUpDate||'';document.getElementById('outcomeBackdrop').classList.add('active')}
+    function closeOutcomeDialog(){document.getElementById('outcomeBackdrop').classList.remove('active')}
+    function saveOutcomeDialog(){const i=Number(document.getElementById('outcomeBuyerIndex').value),mode=document.getElementById('outcomeMode').value,buyer=buyers[i];if(!buyer)return;const oldOutcome=buyer.outcome||'Active',oldDetails={wonProjectName:buyer.wonProjectName,wonPlotNumber:buyer.wonPlotNumber,wonAt:buyer.wonAt,failedAtStage:buyer.failedAtStage,failureReason:buyer.failureReason,failedAt:buyer.failedAt,followUpDate:buyer.followUpDate},timestamp=getShortFormattedTimestamp();let log='';
+      if(mode==='Won'){const project=document.getElementById('wonProjectName').value.trim(),plot=document.getElementById('wonPlotNumber').value.trim(),remarks=document.getElementById('wonRemarks').value.trim();if(!project||!plot)return alert('Project Name and Plot Number are required for a Won buyer.');buyer.wonProjectName=project;buyer.wonPlotNumber=plot;buyer.wonAt=new Date().toISOString();buyer.outcome='Won';log=`[${timestamp}]: WON — ${project}, Plot ${plot}${remarks?' — '+remarks:''}`}
+      else{const reason=document.getElementById('failureReasonSelect').value,remarks=document.getElementById('failedRemarks').value.trim(),future=document.getElementById('failedFollowUpDate').value;if(!reason)return alert('Please select a failure reason.');buyer.outcome='Failed';buyer.failedAtStage=buyer.stage||'';buyer.failureReason=reason;buyer.failedAt=new Date().toISOString();if(future)buyer.followUpDate=future;log=`[${timestamp}]: FAILED after ${buyer.stage||'Unknown stage'} — ${reason}${remarks?' — '+remarks:''}${future?' — Possible follow-up: '+future:''}`}
+      buyer.notes=buyer.notes?`${buyer.notes}\n${log}`:log;closeOutcomeDialog();persistData();renderTable();highlightBuyerRecord(i);showCrmToast(`${buyer.name} marked ${mode}`,()=>undoOutcomeChange(i,oldOutcome,mode,oldDetails));
+    }
+
     function renderDropdowns() {
       const memberSelect = document.getElementById('assignedMember');
       const sourceSelect = document.getElementById('leadSource');
       const stageSelect = document.getElementById('lifecycleStage');
+      const temperatureSelect = document.getElementById('leadStatus');
       
       const filterAgent = document.getElementById('filterAgent');
       const filterSource = document.getElementById('filterSource');
@@ -1647,11 +1978,15 @@ header {
 
       const memberOptions = '<option value="">Unassigned</option>' + teamMembers.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
       const sourceOptions = leadSources.map(s => `<option value="${s}">${s}</option>`).join('');
-      const stageOptions = stages.map(st => `<option value="${st}">${st}</option>`).join('');
+      const usedLegacyStages = sortAZ(buyers.map(b => b.stage).filter(st => st && !stages.includes(st)));
+      const allStageOptions = [...stages, ...usedLegacyStages];
+      const stageOptions = allStageOptions.map(st => `<option value="${st}">${st}</option>`).join('');
+      const temperatureOptions = temperatures.map(t => `<option value="${t}">${t}</option>`).join('');
 
       if (memberSelect) memberSelect.innerHTML = memberOptions;
       if (sourceSelect) sourceSelect.innerHTML = sourceOptions;
       if (stageSelect) stageSelect.innerHTML = stageOptions;
+      if (temperatureSelect) temperatureSelect.innerHTML = temperatureOptions;
 
       if (filterAgent) filterAgent.innerHTML = '<option value="ALL">All Team Members</option>' + teamMembers.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
       if (filterSource) filterSource.innerHTML = '<option value="ALL">All Sources</option>' + sourceOptions;
@@ -1659,6 +1994,9 @@ header {
 
       renderTeamTable();
       renderStageList();
+      renderTemperatureList();
+      renderFailureReasonList();
+      renderSourceList();
     }
 
     function renderStageList() {
@@ -1669,6 +2007,8 @@ header {
         <div class="list-item-row">
           <span><strong>${st}</strong></span>
           <div>
+            <button type="button" class="btn-small" onclick="moveStage(${idx},-1)" ${idx===0?'disabled':''}>↑</button>
+            <button type="button" class="btn-small" onclick="moveStage(${idx},1)" ${idx===stages.length-1?'disabled':''}>↓</button>
             <button type="button" class="btn-edit" onclick="editStage(${idx})">Edit</button>
             <button type="button" class="btn-danger" onclick="deleteStage(${idx})">Delete</button>
           </div>
@@ -1680,9 +2020,12 @@ header {
       const index = parseInt(document.getElementById('editStageIndex').value, 10);
       const val = document.getElementById('stageInput').value.trim();
       if (!val) return;
+      if (stages.some((stage, i) => i !== index && stage.toLowerCase() === val.toLowerCase())) return alert('That Stage already exists.');
 
       if (index >= 0) {
+        const old = stages[index];
         stages[index] = val;
+        buyers.forEach(b => { if (b.stage === old) b.stage = val; if (b.failedAtStage === old) b.failedAtStage = val; });
       } else if (!stages.includes(val)) {
         stages.push(val);
       }
@@ -1706,11 +2049,30 @@ header {
     }
 
     function deleteStage(index) {
-      if (confirm(`Delete stage "${stages[index]}"?`)) {
+      const value = stages[index];
+      if (buyers.some(b => b.stage === value || b.failedAtStage === value)) return alert(`Stage "${value}" is being used by buyer records. Rename it or move those buyers before deleting it.`);
+      if (confirm(`Delete stage "${value}"?`)) {
         stages.splice(index, 1);
         persistData();
       }
     }
+
+    function moveStage(index, direction) { const next=index+direction;if(next<0||next>=stages.length)return;[stages[index],stages[next]]=[stages[next],stages[index]];persistData(); }
+
+    function renderTemperatureList(){const c=document.getElementById('temperatureListContainer');if(!c)return;c.innerHTML=temperatures.map((t,i)=>`<div class="list-item-row"><strong>${t}</strong><div><button type="button" class="btn-edit" onclick="editTemperature(${i})">Edit</button><button type="button" class="btn-danger" onclick="deleteTemperature(${i})">Delete</button></div></div>`).join('')}
+    function saveTemperature(){const i=Number(document.getElementById('editTemperatureIndex').value),v=document.getElementById('temperatureInput').value.trim();if(!v)return;if(temperatures.some((x,n)=>n!==i&&x.toLowerCase()===v.toLowerCase()))return alert('That Temperature already exists.');if(i>=0){let old=temperatures[i];temperatures[i]=v;buyers.forEach(b=>{if(b.status===old)b.status=v})}else temperatures.push(v);persistData();resetTemperatureForm()}
+    function editTemperature(i){document.getElementById('editTemperatureIndex').value=i;document.getElementById('temperatureInput').value=temperatures[i];document.getElementById('temperatureSubmitBtn').innerText='Update Temperature';document.getElementById('cancelTemperatureEditBtn').style.display='inline-block'}
+    function resetTemperatureForm(){document.getElementById('editTemperatureIndex').value='-1';document.getElementById('temperatureInput').value='';document.getElementById('temperatureSubmitBtn').innerText='+ Add Temperature';document.getElementById('cancelTemperatureEditBtn').style.display='none'}
+    function deleteTemperature(i){let v=temperatures[i];if(buyers.some(b=>b.status===v))return alert(`Temperature "${v}" is in use. Rename it or change those buyers first.`);if(confirm(`Delete Temperature "${v}"?`)){temperatures.splice(i,1);persistData()}}
+
+    function renderFailureReasonList(){const c=document.getElementById('failureReasonListContainer');if(!c)return;c.innerHTML=failureReasons.map((r,i)=>`<div class="list-item-row"><strong>${r}</strong><div><button type="button" class="btn-edit" onclick="renameFailureReason(${i})">Edit</button><button type="button" class="btn-danger" onclick="deleteFailureReason(${i})">Delete</button></div></div>`).join('')}
+    function addFailureReason(){const e=document.getElementById('failureReasonInput'),v=e.value.trim();if(v&&!failureReasons.some(x=>x.toLowerCase()===v.toLowerCase())){failureReasons=sortAZ([...failureReasons,v]);e.value='';persistData()}}
+    function renameFailureReason(i){let old=failureReasons[i],v=prompt('Rename failure reason:',old);if(v===null||!v.trim())return;v=v.trim();if(failureReasons.some((x,n)=>n!==i&&x.toLowerCase()===v.toLowerCase()))return alert('That Failure Reason already exists.');failureReasons=sortAZ(failureReasons.map((x,n)=>n===i?v:x));buyers.forEach(b=>{if(b.failureReason===old)b.failureReason=v});persistData()}
+    function deleteFailureReason(i){let v=failureReasons[i];if(buyers.some(b=>b.failureReason===v))return alert(`Reason "${v}" is in use and cannot be deleted.`);if(confirm(`Delete reason "${v}"?`)){failureReasons.splice(i,1);persistData()}}
+
+    function renderSourceList(){const c=document.getElementById('sourceListContainer');if(!c)return;c.innerHTML=leadSources.map((s,i)=>`<div class="list-item-row"><strong>${s}</strong><div><button type="button" class="btn-edit" onclick="renameSource(${i})">Edit</button><button type="button" class="btn-danger" onclick="deleteSource(${i})">Delete</button></div></div>`).join('')}
+    function renameSource(i){let old=leadSources[i],v=prompt('Rename Lead Source:',old);if(v===null||!v.trim())return;v=v.trim();if(leadSources.some((x,n)=>n!==i&&x.toLowerCase()===v.toLowerCase()))return alert('That Lead Source already exists.');leadSources=sortAZ(leadSources.map((x,n)=>n===i?v:x));buyers.forEach(b=>{if(b.source===old)b.source=v});persistData()}
+    function deleteSource(i){let v=leadSources[i];if(buyers.some(b=>b.source===v))return alert(`Source "${v}" is in use. Rename it or change those buyers first.`);if(confirm(`Delete source "${v}"?`)){leadSources.splice(i,1);persistData()}}
 
     function renderTeamTable() {
       const tbody = document.getElementById('teamTableBody');
@@ -1782,11 +2144,20 @@ header {
         }
       }
 
+      if (teamMembers.some((member, idx) => idx !== index && member.name.toLowerCase() === name.toLowerCase())) {
+        alert('A team member with that name already exists.');
+        return;
+      }
+
       if (index >= 0) {
+        const oldName = teamMembers[index].name;
         teamMembers[index] = { name, phone, designation };
+        buyers.forEach(buyer => { if (buyer.member === oldName) buyer.member = name; });
       } else {
         teamMembers.push({ name, phone, designation });
       }
+
+      teamMembers.sort((a,b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity:'base' }));
 
       persistData();
       resetTeamForm();
@@ -1815,6 +2186,8 @@ header {
     }
 
     function deleteTeamMember(index) {
+      const member = teamMembers[index];
+      if (member && buyers.some(buyer => buyer.member === member.name)) return alert(`Team member "${member.name}" is assigned to buyer records. Reassign those buyers or rename the member before deleting.`);
       if (confirm('Are you sure you want to remove this team member?')) {
         teamMembers.splice(index, 1);
         persistData();
@@ -1825,7 +2198,7 @@ header {
       const input = document.getElementById('newSource');
       const val = input.value.trim();
       if (val && !leadSources.includes(val)) {
-        leadSources.push(val);
+        leadSources = sortAZ([...leadSources, val]);
         input.value = '';
         persistData();
       }
@@ -1843,6 +2216,7 @@ header {
       document.getElementById('leadSource').value = buyer.source || '';
       document.getElementById('leadStatus').value = buyer.status || 'Warm';
       document.getElementById('lifecycleStage').value = buyer.stage || '';
+      document.getElementById('leadOutcome').value = ['Active', 'On Hold'].includes(buyer.outcome) ? buyer.outcome : 'Active';
       document.getElementById('followUpDate').value = buyer.followUpDate || '';
       document.getElementById('followUpTime').value = buyer.followUpTime || '';
       document.getElementById('buyerNotes').value = buyer.notes || '';
@@ -1880,6 +2254,7 @@ header {
       const existingRecord = index >= 0 ? buyers[index] : {};
 
       const buyerRecord = {
+        ...existingRecord,
         name: name,
         firstContactDate: document.getElementById('buyerFirstContactDate').value,
         phone: phone,
@@ -1887,6 +2262,9 @@ header {
         source: document.getElementById('leadSource').value,
         status: document.getElementById('leadStatus').value,
         stage: document.getElementById('lifecycleStage').value,
+        outcome: ['Won', 'Failed'].includes(existingRecord.outcome)
+          ? existingRecord.outcome
+          : (document.getElementById('leadOutcome').value || existingRecord.outcome || 'Active'),
         followUpDate: document.getElementById('followUpDate').value,
         followUpTime: document.getElementById('followUpTime').value,
         notes: document.getElementById('buyerNotes').value.trim(),
@@ -1930,10 +2308,11 @@ header {
       renderTable();
     }
 
-    function resetFilters() {
+    function resetFilters(focusSearch = false) {
       document.getElementById('filterAgent').value = 'ALL';
       document.getElementById('filterSource').value = 'ALL';
       document.getElementById('filterStage').value = 'ALL';
+      document.getElementById('filterOutcome').value = 'ALL';
       document.getElementById('searchKeyword').value = '';
       document.getElementById('searchNotes').value = '';
       document.getElementById('fromDate').value = '';
@@ -1941,12 +2320,14 @@ header {
       document.getElementById('hideInactive').checked = true;
       currentPage = 1;
       renderTable();
+      if (focusSearch) setTimeout(() => focusBuyerSearch(), 40);
     }
 
     function getFilteredBuyers() {
       const agentFilter = document.getElementById('filterAgent').value;
       const sourceFilter = document.getElementById('filterSource').value;
       const stageFilter = document.getElementById('filterStage').value;
+      const outcomeFilter = document.getElementById('filterOutcome').value;
       const searchKeyword = document.getElementById('searchKeyword').value.toLowerCase().trim();
       const searchNotes = document.getElementById('searchNotes').value.toLowerCase().trim();
       const fromDate = document.getElementById('fromDate').value;
@@ -1954,10 +2335,11 @@ header {
       const hideInactive = document.getElementById('hideInactive').checked;
 
       const filtered = buyers.map((b, idx) => ({ ...b, originalIndex: idx })).filter(b => {
-        if (hideInactive && (b.stage === 'Not Responding' || b.stage === 'Not Interested')) return false;
+        if (hideInactive && (b.outcome === 'Failed' || b.stage === 'Not Responding' || b.stage === 'Not Interested')) return false;
         if (agentFilter !== 'ALL' && b.member !== agentFilter) return false;
         if (sourceFilter !== 'ALL' && b.source !== sourceFilter) return false;
         if (stageFilter !== 'ALL' && b.stage !== stageFilter) return false;
+        if (outcomeFilter !== 'ALL' && (b.outcome || 'Active') !== outcomeFilter) return false;
         if (searchKeyword && !`${b.name} ${b.phone}`.toLowerCase().includes(searchKeyword)) return false;
         if (searchNotes && !(b.notes || '').toLowerCase().includes(searchNotes)) return false;
         if (fromDate && b.followUpDate && b.followUpDate < fromDate) return false;
@@ -2038,6 +2420,11 @@ header {
         'Source': item.record.source || '',
         'Temperature': item.record.status || '',
         'Stage': item.record.stage || '',
+        'Outcome': item.record.outcome || 'Active',
+        'Won Project': item.record.wonProjectName || '',
+        'Plot Number': item.record.wonPlotNumber || '',
+        'Failed At Stage': item.record.failedAtStage || '',
+        'Failure Reason': item.record.failureReason || '',
         'First Contact Date': item.record.firstContactDate || '',
         'Last Contacted': item.record.lastContacted || '',
         'Follow-up Date': item.record.followUpDate || '',
@@ -2047,7 +2434,8 @@ header {
       const worksheet = XLSX.utils.json_to_sheet(worksheetData);
       worksheet['!cols'] = [
         { wch: 24 }, { wch: 16 }, { wch: 22 }, { wch: 18 }, { wch: 14 },
-        { wch: 22 }, { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 52 }
+        { wch: 22 }, { wch: 14 }, { wch: 22 }, { wch: 16 }, { wch: 22 },
+        { wch: 24 }, { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 52 }
       ];
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Selected Buyers');
@@ -2077,7 +2465,7 @@ header {
     }
 
     function downloadPreDeleteBackup() {
-      const backup = { createdBeforeBulkDelete: new Date().toISOString(), teamMembers, leadSources, stages, buyers };
+      const backup = { createdBeforeBulkDelete: new Date().toISOString(), teamMembers, leadSources, stages, temperatures, failureReasons, buyers, workflowV2: true };
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -2151,14 +2539,14 @@ header {
       document.getElementById('pageIndicator').innerText = `${currentPage} / ${totalPages}`;
 
       if (pageSlice.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:#888; padding: 24px;">No matching records found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; color:#888; padding: 24px;">No matching records found.</td></tr>`;
         return;
       }
 
       document.getElementById('kpiTotal').innerText = filtered.length;
       document.getElementById('kpiHot').innerText = filtered.filter(b => b.status === 'Hot').length;
-      document.getElementById('kpiVisits').innerText = filtered.filter(b => b.stage === 'Site Visit Scheduled').length;
-      document.getElementById('kpiWon').innerText = filtered.filter(b => b.stage === 'Closed / Won').length;
+      document.getElementById('kpiVisits').innerText = filtered.filter(b => b.stage === 'Site Visit' || b.stage === 'Site Visit Scheduled').length;
+      document.getElementById('kpiWon').innerText = filtered.filter(b => b.outcome === 'Won' || b.stage === 'Closed / Won').length;
 
       tbody.innerHTML = pageSlice.map(b => {
         const actualIndex = b.originalIndex;
@@ -2166,14 +2554,15 @@ header {
         const followUpString = (b.followUpDate || b.followUpTime) ? `${b.followUpDate || ''} ${b.followUpTime || ''}`.trim() : '-';
 
         return `
-          <tr>
+          <tr id="buyer-row-${actualIndex}">
             <td data-label="Select"><input type="checkbox" class="record-select" aria-label="Select ${b.name}" onchange="toggleBuyerSelection(${actualIndex}, this.checked)" ${selectedBuyerIndices.has(actualIndex) ? 'checked' : ''}></td>
             <td data-label="Buyer"><strong>${b.name}</strong></td>
             
             <td data-label="Phone & Connect" style="white-space: nowrap;">
               ${b.phone ? `
-                <a href="tel:${b.phone}" onclick="logContactAction(${actualIndex}, 'Call')" title="Call Buyer" style="text-decoration:none; margin-right:4px; font-size:15px;">📞</a>
+                <a href="tel:${b.phone}" onclick="beginBuyerCall(${actualIndex})" title="Call Buyer" style="text-decoration:none; margin-right:4px; font-size:15px;">📞</a>
                 <a href="https://wa.me/${cleanPhone}" target="_blank" onclick="logContactAction(${actualIndex}, 'WhatsApp')" title="WhatsApp Chat" style="text-decoration:none; margin-right:6px; font-size:15px;">💬</a>
+                <button type="button" onclick="openPostCallPanelForIndex(${actualIndex})" title="Add call note" style="width:auto; padding:3px 6px; margin-right:5px; background:#eef2ff; color:#303c91;">📝</button>
                 <span style="font-size:0.8rem;">${b.phone}</span>
               ` : '-'}
             </td>
@@ -2184,17 +2573,27 @@ header {
             <td data-label="Status">
               <span class="badge badge-${(b.status || 'warm').toLowerCase()}">${b.status}</span>
               <div style="margin-top: 4px;">
-                <select onchange="quickUpdateStatus(${actualIndex}, this.value)" style="font-size: 10px; padding: 2px; width: 100%;">
-                  <option value="" disabled selected>Flag Lead...</option>
-                  <option value="Not Interested">🔴 Flag: Not Interested</option>
-                  <option value="Not Responding">🔴 Flag: Lost / Delay</option>
-                  <option value="Hot">🔥 Mark Hot</option>
-                  <option value="Warm">🟡 Mark Warm</option>
+                <select aria-label="Change temperature for ${b.name}" onchange="quickUpdateStatus(${actualIndex}, this.value)" style="font-size: 10px; padding: 2px; width: 100%;">
+                  ${[...new Set([...temperatures, b.status].filter(Boolean))].map(t => `<option value="${t}" ${t === b.status ? 'selected' : ''}>${t}</option>`).join('')}
                 </select>
               </div>
             </td>
 
-            <td data-label="Stage">${b.stage}</td>
+            <td data-label="Stage">
+              <select class="quick-stage-select" aria-label="Change stage for ${b.name}" onchange="quickUpdateStage(${actualIndex}, this.value)">
+                ${[...new Set([...stages, b.stage].filter(Boolean))].map(st => `<option value="${st}" ${st === b.stage ? 'selected' : ''}>${st}</option>`).join('')}
+              </select>
+            </td>
+            <td data-label="Outcome">
+              <span class="badge outcome-${(b.outcome || 'Active').toLowerCase().replace(/\s+/g, '-')}">${b.outcome || 'Active'}</span>
+              <div class="outcome-actions">
+                ${(b.outcome || 'Active') === 'Active'
+                  ? `<button type="button" onclick="quickSetOutcome(${actualIndex}, 'On Hold')" title="Put on hold">⏸ Hold</button>`
+                  : `<button type="button" onclick="quickSetOutcome(${actualIndex}, 'Active')" title="Reactivate">▶ Active</button>`}
+                <button type="button" onclick="openOutcomeDialog(${actualIndex}, 'Won')" title="Mark won">🏆 Won</button>
+                <button type="button" onclick="openOutcomeDialog(${actualIndex}, 'Failed')" title="Mark failed">✖ Failed</button>
+              </div>
+            </td>
             <td data-label="Last Contacted"><span class="last-contacted-badge">${b.lastContacted || '-'}</span></td>
             <td data-label="Follow Up"><strong>${followUpString}</strong></td>
             
@@ -2216,7 +2615,7 @@ header {
     }
 
     function archiveInactiveBuyers(format) {
-      const inactiveBuyers = buyers.filter(b => b.stage === 'Not Responding' || b.stage === 'Not Interested');
+      const inactiveBuyers = buyers.filter(b => b.outcome === 'Failed' || b.stage === 'Not Responding' || b.stage === 'Not Interested');
       if (inactiveBuyers.length === 0) {
         alert("No inactive buyers found to archive.");
         return;
@@ -2227,7 +2626,9 @@ header {
 
       if (format === 'xlsx') {
         const worksheetData = inactiveBuyers.map(b => ({
-          Buyer: b.name, Phone: b.phone, 'Team Member': b.member, Source: b.source, Temperature: b.status, Stage: b.stage, 'FollowUp Date': b.followUpDate, Notes: b.notes
+          Buyer: b.name, Phone: b.phone, 'Team Member': b.member, Source: b.source, Temperature: b.status, Stage: b.stage,
+          Outcome: b.outcome || 'Failed', 'Failed At Stage': b.failedAtStage || '', 'Failure Reason': b.failureReason || '',
+          'FollowUp Date': b.followUpDate, Notes: b.notes
         }));
         const worksheet = XLSX.utils.json_to_sheet(worksheetData);
         const workbook = XLSX.utils.book_new();
@@ -2241,14 +2642,14 @@ header {
         a.click();
       }
 
-      buyers = buyers.filter(b => b.stage !== 'Not Responding' && b.stage !== 'Not Interested');
+      buyers = buyers.filter(b => b.outcome !== 'Failed' && b.stage !== 'Not Responding' && b.stage !== 'Not Interested');
       selectedBuyerIndices.clear();
       persistData();
       alert(`Successfully archived and purged ${inactiveBuyers.length} records.`);
     }
 
     function exportDatabase() {
-      const blob = new Blob([JSON.stringify({ teamMembers, leadSources, stages, buyers }, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify({ teamMembers, leadSources, stages, temperatures, failureReasons, buyers, workflowV2: true }, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = `CRM_Backup_${new Date().toISOString().slice(0, 10)}.json`;
@@ -2267,8 +2668,12 @@ header {
           if (data.teamMembers) teamMembers = data.teamMembers;
           if (data.leadSources) leadSources = data.leadSources;
           if (data.stages) stages = data.stages;
-        if (data.buyers) buyers = data.buyers;
-        selectedBuyerIndices.clear();
+          if (data.temperatures) temperatures = data.temperatures;
+          if (data.failureReasons) failureReasons = data.failureReasons;
+          if (data.buyers) buyers = data.buyers;
+          workflowV2Ready = data.workflowV2 === true;
+          normalizeCrmMastersAndBuyers();
+          selectedBuyerIndices.clear();
           persistData();
           alert(`✅ Success: Backup restored to cloud!`);
         } catch (err) { alert(`❌ Error loading file.`); }
@@ -2292,6 +2697,8 @@ header {
             teamMembers.push({ name: String(rows[i][0]).trim(), phone: String(rows[i][1] || '').trim(), designation: String(rows[i][2] || '').trim() });
           }
         }
+        teamMembers = teamMembers.filter((member, index, list) => member.name && list.findIndex(x => String(x.name).toLowerCase() === String(member.name).toLowerCase()) === index)
+          .sort((a,b) => String(a.name).localeCompare(String(b.name), undefined, { sensitivity:'base' }));
         persistData();
         alert(`✅ Team imported successfully!`);
       };
@@ -2304,12 +2711,12 @@ header {
         return;
       }
 
-      const headers = ['Buyer Name', 'Phone', 'Team Member', 'Source', 'Temperature', 'Stage', 'Follow-up Date', 'Follow-up Time', 'Notes'];
-      const sampleRow = ['Sample Buyer', '9876543210', 'Unassigned', 'Referral', 'Warm', 'New Lead', '2026-08-30', '10:30', 'Replace this sample row with actual buyer details'];
+      const headers = ['Buyer Name', 'Phone', 'Team Member', 'Source', 'Temperature', 'Stage', 'Outcome', 'Follow-up Date', 'Follow-up Time', 'Notes'];
+      const sampleRow = ['Sample Buyer', '9876543210', 'Unassigned', 'Referral', 'Warm', 'New Lead', 'Active', '2026-08-30', '10:30', 'Replace this sample row with actual buyer details'];
       const worksheet = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
       worksheet['!cols'] = [
         { wch: 24 }, { wch: 16 }, { wch: 22 }, { wch: 18 }, { wch: 14 },
-        { wch: 20 }, { wch: 16 }, { wch: 16 }, { wch: 48 }
+        { wch: 20 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 48 }
       ];
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Buyers');
@@ -2332,8 +2739,10 @@ header {
           return;
         }
 
-        buyers = [];
-        selectedBuyerIndices.clear();
+        let importedCount = 0;
+        let skippedDuplicates = 0;
+        const headerRow = (rows[0] || []).map(value => String(value || '').trim().toLowerCase());
+        const hasOutcomeColumn = headerRow.includes('outcome');
 
         for (let i = 1; i < rows.length; i++) {
           const r = rows[i];
@@ -2342,22 +2751,31 @@ header {
           const name = r[0] ? String(r[0]).trim() : '';
           if (!name) continue;
 
+          const phone = r[1] ? String(r[1]).trim() : '';
+          if (phone && buyers.some(b => String(b.phone || '').trim() === phone)) {
+            skippedDuplicates++;
+            continue;
+          }
           buyers.push({
             name: name,
-            phone: r[1] ? String(r[1]).trim() : '',
+            phone: phone,
             member: r[2] ? String(r[2]).trim() : 'Unassigned',
             source: r[3] ? String(r[3]).trim() : 'Referral',
             status: r[4] ? String(r[4]).trim() : 'Warm',
             stage: r[5] ? String(r[5]).trim() : 'New Lead',
-            followUpDate: r[6] ? String(r[6]).trim() : '',
-            followUpTime: r[7] ? String(r[7]).trim() : '',
-            notes: r[8] ? String(r[8]).trim() : '',
+            outcome: hasOutcomeColumn && ['Active', 'On Hold'].includes(String(r[6] || '').trim()) ? String(r[6]).trim() : 'Active',
+            followUpDate: r[hasOutcomeColumn ? 7 : 6] ? String(r[hasOutcomeColumn ? 7 : 6]).trim() : '',
+            followUpTime: r[hasOutcomeColumn ? 8 : 7] ? String(r[hasOutcomeColumn ? 8 : 7]).trim() : '',
+            notes: r[hasOutcomeColumn ? 9 : 8] ? String(r[hasOutcomeColumn ? 9 : 8]).trim() : '',
             lastContacted: ''
           });
+          importedCount++;
         }
 
+        normalizeCrmMastersAndBuyers();
+        selectedBuyerIndices.clear();
         persistData();
-        alert(`✅ Success: Imported ${buyers.length} records by column position!`);
+        alert(`✅ Imported ${importedCount} new record${importedCount === 1 ? '' : 's'}.${skippedDuplicates ? ` Skipped ${skippedDuplicates} duplicate phone number${skippedDuplicates === 1 ? '' : 's'}.` : ''}\nExisting buyers were kept.`);
         switchTab('tab-directory');
       };
       reader.readAsArrayBuffer(file);
