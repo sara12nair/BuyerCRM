@@ -335,7 +335,7 @@
     }
 
     .expandable-notes {
-      display: none;
+      display: block;
       font-size: 0.8rem;
       color: #334155;
       background: #f8fafc;
@@ -345,9 +345,11 @@
       white-space: pre-wrap;
       border: 1px solid var(--border);
       max-width: 280px;
+      max-height: 50px;
+      overflow-y: auto;
     }
 
-    .expandable-notes.active { display: block; }
+    .expandable-notes.active { max-height: none; overflow-y: visible; }
 
     .pagination-container {
       display: flex;
@@ -925,7 +927,38 @@ header {
   .outcome-badge { display:inline-block; padding:5px 9px; border-radius:9px; font-size:.68rem; font-weight:800; text-transform:uppercase; }
   .outcome-active{background:#dcfce7;color:#166534}.outcome-on-hold{background:#fef3c7;color:#92400e}.outcome-won{background:#d1fae5;color:#065f46}.outcome-failed{background:#fee2e2;color:#991b1b}
   .outcome-actions { display:flex; gap:4px; flex-wrap:wrap; margin-top:5px; }
-  .outcome-actions button { width:auto; padding:4px 6px; font-size:10px; border-radius:7px; }
+  .outcome-actions button {
+    position:relative;
+    z-index:2;
+    width:auto;
+    padding:6px 8px;
+    font-size:11px;
+    border-radius:7px;
+    cursor:pointer;
+    pointer-events:auto;
+    touch-action:manipulation;
+  }
+  .outcome-control { min-width:166px; margin-top:8px; }
+  .buyer-outcome-name { color:var(--primary); font-size:1rem; }
+  @media(min-width:769px){
+    #tab-directory .buyer-outcome-header {
+      position:sticky;
+      left:0;
+      z-index:20;
+      min-width:205px;
+      background:#eef2ff;
+      box-shadow:7px 0 10px -9px rgba(15,23,42,.75);
+    }
+    #tab-directory .buyer-outcome-cell {
+      position:sticky;
+      left:0;
+      z-index:10;
+      min-width:205px;
+      background:#fff;
+      box-shadow:7px 0 10px -9px rgba(15,23,42,.75);
+    }
+    #tab-directory .buyer-return-highlight .buyer-outcome-cell { background:#fff8c9; }
+  }
   .buyer-return-highlight td { animation: buyerReturnGlow 2.8s ease-out; }
   @keyframes buyerReturnGlow { 0%,35%{background:#fff1a8!important} 100%{background:transparent} }
 
@@ -939,6 +972,20 @@ header {
   .crm-toast { display:none; position:fixed; left:50%; bottom:20px; transform:translateX(-50%); z-index:1400; background:#172033; color:#fff; padding:10px 12px; border-radius:11px; box-shadow:0 8px 26px rgba(0,0,0,.28); max-width:94%; align-items:center; gap:10px; }
   .crm-toast.active { display:flex; }
   .crm-toast button { width:auto; padding:6px 10px; background:#facc15; color:#422006; }
+  @media(max-width:768px){
+    #tab-directory .buyer-outcome-cell { position:static; min-width:0; display:block; }
+    #tab-directory .outcome-control {
+      min-width:0;
+      width:100%;
+      margin-top:9px;
+      padding:9px;
+      border-radius:11px;
+      background:#f8faff;
+      text-align:left;
+    }
+    #tab-directory .outcome-actions { justify-content:flex-start; }
+    #tab-directory .outcome-actions button { min-height:36px; padding:7px 9px; }
+  }
   @media(max-width:620px){.call-note-grid{grid-template-columns:1fr}.call-note-grid .wide{grid-column:auto}.call-note-panel{margin:2vh auto}.buyer-search-hero{padding:10px}}
 
   /* Action buttons breathe */
@@ -1235,13 +1282,12 @@ header {
           <thead>
             <tr>
               <th>Select</th>
-              <th onclick="sortTable('name')">Buyer <span id="sort-name" class="sort-icon">▲▼</span></th>
+              <th class="buyer-outcome-header" onclick="sortTable('name')">Buyer &amp; Outcome <span id="sort-name" class="sort-icon">▲▼</span></th>
               <th>Phone & Connect</th>
               <th onclick="sortTable('member')">Team <span id="sort-member" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('source')">Source <span id="sort-source" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('status')">Status <span id="sort-status" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('stage')">Stage <span id="sort-stage" class="sort-icon">▲▼</span></th>
-              <th onclick="sortTable('outcome')">Outcome <span id="sort-outcome" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('lastContacted')">Last Contacted <span id="sort-lastContacted" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('followUpDate')">Follow Up <span id="sort-followUpDate" class="sort-icon">▲▼</span></th>
               <th>Notes</th>
@@ -1623,6 +1669,7 @@ header {
     let teamMembers = [];
     let leadSources = [];
     let stages = [];
+    let editingStageIndex = -1;
     let temperatures = [];
     let failureReasons = [];
     let buyers = [];
@@ -1680,7 +1727,11 @@ header {
 
     function returnToBuyerSearch() {
       document.getElementById('callNoteBackdrop').classList.remove('active');
-      document.getElementById('outcomeBackdrop').classList.remove('active');
+      const outcomeBackdrop = document.getElementById('outcomeBackdrop');
+      if (outcomeBackdrop) {
+        outcomeBackdrop.classList.remove('active');
+        outcomeBackdrop.style.display = '';
+      }
       activeCallBuyerRef = null;
       activeOutcomeBuyerRef = null;
       focusBuyerSearch(true);
@@ -2024,8 +2075,54 @@ header {
       const timestamp=getShortFormattedTimestamp(),log=`[${timestamp}]: Outcome changed from ${oldOutcome} to ${newOutcome}`;buyer.notes=buyer.notes?`${buyer.notes}\n${log}`:log;
       persistData();renderTable();highlightBuyerRecord(actualIndex);showCrmToast(`Outcome updated: ${newOutcome}`,()=>undoOutcomeChange(actualIndex,oldOutcome,newOutcome));
     }
+    function handleOutcomeActionClick(event) {
+      const button = event.target.closest('button[data-outcome-action]');
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const actualIndex = Number(button.dataset.buyerIndex);
+      const action = button.dataset.outcomeAction;
+      if (!Number.isInteger(actualIndex) || !buyers[actualIndex]) return alert('This buyer record could not be found. Please refresh and try again.');
+      if (action === 'Active' || action === 'On Hold') quickSetOutcome(actualIndex, action);
+      else if (action === 'Won' || action === 'Failed') openOutcomeDialog(actualIndex, action);
+    }
     function undoOutcomeChange(actualIndex,oldOutcome,changedOutcome,oldDetails=null){const buyer=buyers[actualIndex];if(!buyer||buyer.outcome!==changedOutcome)return showCrmToast('Outcome changed again; Undo was not applied.');buyer.outcome=oldOutcome;if(oldDetails){['wonProjectName','wonPlotNumber','wonAt','failedAtStage','failureReason','failedAt','followUpDate'].forEach(key=>{if(oldDetails[key]===undefined)delete buyer[key];else buyer[key]=oldDetails[key]})}const timestamp=getShortFormattedTimestamp(),log=`[${timestamp}]: Outcome change undone; restored to ${oldOutcome}`;buyer.notes=buyer.notes?`${buyer.notes}\n${log}`:log;persistData();renderTable();highlightBuyerRecord(actualIndex);showCrmToast(`Outcome restored to ${oldOutcome}`)}
-    function openOutcomeDialog(actualIndex,mode){const buyer=buyers[actualIndex];if(!buyer)return;activeOutcomeBuyerRef=buyer;clearPendingCallSession();document.getElementById('callNoteBackdrop').classList.remove('active');document.getElementById('outcomeBuyerIndex').value=actualIndex;document.getElementById('outcomeBuyerPhone').value=buyer.phone||'';document.getElementById('outcomeBuyerNameValue').value=buyer.name||'';document.getElementById('outcomeBuyerId').value=ensureBuyerId(buyer);document.getElementById('outcomeMode').value=mode;document.getElementById('outcomeBuyerName').textContent=`${buyer.name} • Current stage: ${buyer.stage||'None'}`;document.getElementById('outcomeDialogTitle').textContent=mode==='Won'?'🏆 Mark Buyer as Won':'✖ Mark Buyer as Failed';document.getElementById('wonFields').style.display=mode==='Won'?'grid':'none';document.getElementById('failedFields').style.display=mode==='Failed'?'grid':'none';document.getElementById('wonProjectName').value=buyer.wonProjectName||'';document.getElementById('wonPlotNumber').value=buyer.wonPlotNumber||'';document.getElementById('wonRemarks').value='';document.getElementById('failedAtStage').value=buyer.stage||'None';document.getElementById('failureReasonSelect').innerHTML=failureReasons.map(r=>`<option value="${r}">${r}</option>`).join('');document.getElementById('failedRemarks').value='';document.getElementById('failedFollowUpDate').value=buyer.followUpDate||'';document.getElementById('outcomeBackdrop').classList.add('active')}
+    function openOutcomeDialog(actualIndex, mode) {
+      const buyer = buyers[actualIndex];
+      if (!buyer) return alert('This buyer record could not be found. Please refresh and try again.');
+      const ids = ['outcomeBackdrop','callNoteBackdrop','outcomeBuyerIndex','outcomeBuyerPhone','outcomeBuyerNameValue','outcomeBuyerId','outcomeMode','outcomeBuyerName','outcomeDialogTitle','wonFields','failedFields','wonProjectName','wonPlotNumber','wonRemarks','failedAtStage','failureReasonSelect','failedRemarks','failedFollowUpDate'];
+      const el = Object.fromEntries(ids.map(id => [id, document.getElementById(id)]));
+      if (ids.some(id => !el[id])) return alert('The Outcome window could not open. Please install the latest index.html and refresh once.');
+
+      activeOutcomeBuyerRef = buyer;
+      clearPendingCallSession();
+      el.callNoteBackdrop.classList.remove('active');
+      el.outcomeBuyerIndex.value = String(actualIndex);
+      el.outcomeBuyerPhone.value = buyer.phone || '';
+      el.outcomeBuyerNameValue.value = buyer.name || '';
+      el.outcomeBuyerId.value = ensureBuyerId(buyer);
+      el.outcomeMode.value = mode;
+      el.outcomeBuyerName.textContent = `${buyer.name} • Current stage: ${buyer.stage || 'None'}`;
+      el.outcomeDialogTitle.textContent = mode === 'Won' ? '🏆 Mark Buyer as Won' : '✖ Mark Buyer as Failed';
+      el.wonFields.style.display = mode === 'Won' ? 'grid' : 'none';
+      el.failedFields.style.display = mode === 'Failed' ? 'grid' : 'none';
+      el.wonProjectName.value = buyer.wonProjectName || '';
+      el.wonPlotNumber.value = buyer.wonPlotNumber || '';
+      el.wonRemarks.value = '';
+      el.failedAtStage.value = buyer.stage || 'None';
+      const reasons = failureReasons.length ? failureReasons : getDefaultFailureReasons();
+      el.failureReasonSelect.innerHTML = reasons.map(reason => `<option value="${reason}">${reason}</option>`).join('');
+      el.failedRemarks.value = '';
+      el.failedFollowUpDate.value = buyer.followUpDate || '';
+
+      if (el.outcomeBackdrop.parentElement !== document.body) document.body.appendChild(el.outcomeBackdrop);
+      el.outcomeBackdrop.classList.add('active');
+      el.outcomeBackdrop.style.display = 'block';
+      requestAnimationFrame(() => {
+        const firstField = mode === 'Won' ? el.wonProjectName : el.failureReasonSelect;
+        try { firstField.focus({ preventScroll: true }); } catch (_) { firstField.focus(); }
+      });
+    }
     function closeOutcomeDialog(){returnToBuyerSearch()}
     function saveOutcomeDialog(){const i=resolveDialogBuyerIndex(document.getElementById('outcomeBuyerIndex').value,document.getElementById('outcomeBuyerPhone').value,document.getElementById('outcomeBuyerId').value,document.getElementById('outcomeBuyerNameValue').value,activeOutcomeBuyerRef),mode=document.getElementById('outcomeMode').value,buyer=buyers[i];if(!buyer){returnToBuyerSearch();return alert('The selected buyer could not be matched. Please open the outcome again.')}const oldOutcome=buyer.outcome||'Active',oldDetails={wonProjectName:buyer.wonProjectName,wonPlotNumber:buyer.wonPlotNumber,wonAt:buyer.wonAt,failedAtStage:buyer.failedAtStage,failureReason:buyer.failureReason,failedAt:buyer.failedAt,followUpDate:buyer.followUpDate},timestamp=getShortFormattedTimestamp();let log='';
       if(mode==='Won'){const project=document.getElementById('wonProjectName').value.trim(),plot=document.getElementById('wonPlotNumber').value.trim(),remarks=document.getElementById('wonRemarks').value.trim();if(!project||!plot)return alert('Project Name and Plot Number are required for a Won buyer.');buyer.wonProjectName=project;buyer.wonPlotNumber=plot;buyer.wonAt=new Date().toISOString();buyer.outcome='Won';log=`[${timestamp}]: WON — ${project}, Plot ${plot}${remarks?' — '+remarks:''}`}
@@ -2070,15 +2167,36 @@ header {
       const container = document.getElementById('stageListContainer');
       if (!container) return;
 
-      container.innerHTML = stages.map((st, idx) => `
-        <div class="list-item-row">
-          <span><strong>${st}</strong></span>
-          <div>
-            <button type="button" class="btn-edit" onclick="editStage(${idx})">Edit</button>
-            <button type="button" class="btn-danger" onclick="deleteStage(${idx})">Delete</button>
-          </div>
-        </div>
-      `).join('');
+      container.innerHTML = stages.map((st, idx) => {
+        if (idx === editingStageIndex) {
+          return `
+            <div class="list-item-row" style="gap:8px;align-items:center;">
+              <input type="text" id="stageEditInput-${idx}" aria-label="Edit ${st}"
+                onkeydown="handleStageEditKey(event, ${idx})"
+                style="margin:0;min-width:0;flex:1;border:2px solid var(--primary);">
+              <div style="display:flex;gap:6px;flex-shrink:0;">
+                <button type="button" class="btn-edit" onclick="saveStageEdit(${idx})">Save</button>
+                <button type="button" onclick="cancelStageEdit()" style="background:#64748b;color:white;">Cancel</button>
+              </div>
+            </div>`;
+        }
+        return `
+          <div class="list-item-row">
+            <span><strong>${st}</strong></span>
+            <div>
+              <button type="button" class="btn-edit" onclick="editStage(${idx})">Edit</button>
+              <button type="button" class="btn-danger" onclick="deleteStage(${idx})">Delete</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      if (editingStageIndex >= 0) {
+        const input = document.getElementById(`stageEditInput-${editingStageIndex}`);
+        if (input) {
+          input.value = stages[editingStageIndex] || '';
+          requestAnimationFrame(() => { input.focus(); input.select(); });
+        }
+      }
     }
 
     function saveStage() {
@@ -2100,10 +2218,44 @@ header {
     }
 
     function editStage(index) {
-      document.getElementById('editStageIndex').value = index;
-      document.getElementById('stageInput').value = stages[index];
-      document.getElementById('stageSubmitBtn').innerText = 'Update Stage';
-      document.getElementById('cancelStageEditBtn').style.display = 'inline-block';
+      if (index < 0 || index >= stages.length) return;
+      editingStageIndex = index;
+      renderStageList();
+    }
+
+    function saveStageEdit(index) {
+      if (index !== editingStageIndex || index < 0 || index >= stages.length) return;
+      const input = document.getElementById(`stageEditInput-${index}`);
+      const val = input ? input.value.trim() : '';
+      if (!val) return alert('Stage name cannot be blank.');
+      if (stages.some((stage, i) => i !== index && stage.toLowerCase() === val.toLowerCase())) {
+        return alert('That Stage already exists.');
+      }
+
+      const old = stages[index];
+      stages[index] = val;
+      buyers.forEach(b => {
+        if (b.stage === old) b.stage = val;
+        if (b.failedAtStage === old) b.failedAtStage = val;
+      });
+      editingStageIndex = -1;
+      persistData();
+      renderDropdowns();
+    }
+
+    function cancelStageEdit() {
+      editingStageIndex = -1;
+      renderStageList();
+    }
+
+    function handleStageEditKey(event, index) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveStageEdit(index);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelStageEdit();
+      }
     }
 
     function resetStageForm() {
@@ -2111,6 +2263,10 @@ header {
       document.getElementById('stageInput').value = "";
       document.getElementById('stageSubmitBtn').innerText = '+ Add Stage';
       document.getElementById('cancelStageEditBtn').style.display = 'none';
+      if (editingStageIndex >= 0) {
+        editingStageIndex = -1;
+        renderStageList();
+      }
     }
 
     function deleteStage(index) {
@@ -2610,7 +2766,7 @@ header {
       document.getElementById('pageIndicator').innerText = `${currentPage} / ${totalPages}`;
 
       if (pageSlice.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; color:#888; padding: 24px;">No matching records found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:#888; padding: 24px;">No matching records found.</td></tr>`;
         return;
       }
 
@@ -2627,7 +2783,19 @@ header {
         return `
           <tr id="buyer-row-${actualIndex}">
             <td data-label="Select"><input type="checkbox" class="record-select" aria-label="Select ${b.name}" onchange="toggleBuyerSelection(${actualIndex}, this.checked)" ${selectedBuyerIndices.has(actualIndex) ? 'checked' : ''}></td>
-            <td data-label="Buyer"><strong>${b.name}</strong></td>
+            <td data-label="Buyer" class="buyer-outcome-cell">
+              <strong class="buyer-outcome-name">${b.name}</strong>
+              <div class="outcome-control">
+                <span class="badge outcome-${(b.outcome || 'Active').toLowerCase().replace(/\s+/g, '-')}">${b.outcome || 'Active'}</span>
+                <div class="outcome-actions">
+                  ${(b.outcome || 'Active') === 'Active'
+                    ? `<button type="button" data-buyer-index="${actualIndex}" data-outcome-action="On Hold" title="Put on hold">⏸ Hold</button>`
+                    : `<button type="button" data-buyer-index="${actualIndex}" data-outcome-action="Active" title="Reactivate">▶ Active</button>`}
+                  <button type="button" data-buyer-index="${actualIndex}" data-outcome-action="Won" title="Mark won">🏆 Won</button>
+                  <button type="button" data-buyer-index="${actualIndex}" data-outcome-action="Failed" title="Mark failed">✖ Failed</button>
+                </div>
+              </div>
+            </td>
             
             <td data-label="Phone & Connect" style="white-space: nowrap;">
               ${b.phone ? `
@@ -2655,21 +2823,11 @@ header {
                 ${getOrderedStageOptions(b.stage).map(st => `<option value="${st}" ${st === b.stage ? 'selected' : ''}>${st}</option>`).join('')}
               </select>
             </td>
-            <td data-label="Outcome">
-              <span class="badge outcome-${(b.outcome || 'Active').toLowerCase().replace(/\s+/g, '-')}">${b.outcome || 'Active'}</span>
-              <div class="outcome-actions">
-                ${(b.outcome || 'Active') === 'Active'
-                  ? `<button type="button" onclick="quickSetOutcome(${actualIndex}, 'On Hold')" title="Put on hold">⏸ Hold</button>`
-                  : `<button type="button" onclick="quickSetOutcome(${actualIndex}, 'Active')" title="Reactivate">▶ Active</button>`}
-                <button type="button" onclick="openOutcomeDialog(${actualIndex}, 'Won')" title="Mark won">🏆 Won</button>
-                <button type="button" onclick="openOutcomeDialog(${actualIndex}, 'Failed')" title="Mark failed">✖ Failed</button>
-              </div>
-            </td>
             <td data-label="Last Contacted"><span class="last-contacted-badge">${b.lastContacted || '-'}</span></td>
             <td data-label="Follow Up"><strong>${followUpString}</strong></td>
             
             <td data-label="Notes" style="max-width: 240px;">
-              <div style="font-size: 0.75rem; max-height: 50px; overflow-y: auto; white-space: pre-wrap; margin-bottom: 4px; color:#334155;">${b.notes || 'No notes'}</div>
+              <div id="note-${actualIndex}" class="expandable-notes ${allNotesExpanded ? 'active' : ''}" style="margin-bottom:4px;">${b.notes || 'No notes'}</div>
               <div style="display: flex; gap: 4px;">
                 <input type="text" id="quick-note-input-${actualIndex}" placeholder="Type update..." style="font-size: 10px; flex: 1; padding: 2px 4px; height: 22px;">
                 <button type="button" onclick="appendQuickNote(${actualIndex})" style="font-size: 10px; padding: 2px 6px; width: auto; height: 22px; background:var(--primary); color:white;">+ Add</button>
@@ -2892,9 +3050,12 @@ header {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(error => console.error('Service worker registration failed:', error));
+        navigator.serviceWorker.register('./sw.js?v=260907004').catch(error => console.error('Service worker registration failed:', error));
       });
     }
+
+    const buyerTableBody = document.getElementById('buyerTableBody');
+    if (buyerTableBody) buyerTableBody.addEventListener('click', handleOutcomeActionClick);
 
     updatePwaInstallUi();
   </script>
