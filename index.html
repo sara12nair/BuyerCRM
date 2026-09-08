@@ -1153,6 +1153,55 @@ header {
     .selection-toolbar-actions button { flex: 1 1 145px; }
   }
 
+
+
+/* =========================================================
+   MOBILE SEARCH FOCUS MODE — BUILD 260908-005
+   Keeps search visible and brings matching buyers immediately
+   below it without changing CRM data/workflow logic.
+   ========================================================= */
+.buyer-search-match-count {
+  display:none;
+  margin-top:8px;
+  font-size:.76rem;
+  font-weight:700;
+  color:#3346c8;
+}
+.search-hit {
+  background:#fff2a8;
+  color:inherit;
+  border-radius:4px;
+  padding:0 1px;
+}
+@media screen and (max-width: 600px) {
+  #tab-directory.search-active > .card:first-child { display:none; }
+  #tab-directory.search-active > .card:nth-of-type(2) {
+    position:sticky;
+    top:62px;
+    z-index:90;
+    padding:8px 10px 9px;
+    margin:0 0 8px;
+    border-radius:0 0 15px 15px;
+    box-shadow:0 7px 18px rgba(42,47,85,.11);
+  }
+  #tab-directory.search-active > .card:nth-of-type(2) > h3,
+  #tab-directory.search-active > .card:nth-of-type(2) > .grid,
+  #tab-directory.search-active > .card:nth-of-type(2) > div:last-child { display:none !important; }
+  #tab-directory.search-active .buyer-search-hero {
+    margin:0;
+    padding:8px 9px;
+    border-radius:12px;
+    box-shadow:none;
+  }
+  #tab-directory.search-active .buyer-search-help { display:none; }
+  #tab-directory.search-active .buyer-search-match-count { display:block; }
+  #tab-directory.search-active > .card:nth-of-type(3) {
+    margin-top:0;
+    padding:7px;
+  }
+  #tab-directory.search-active .selection-toolbar { display:none; }
+  #tab-directory.search-active .pagination-container { margin-top:8px; }
+}
   </style>
 </head>
 <body>
@@ -1162,7 +1211,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260906-02</span>
+        <span>Cloud Sync Active ⚡ · Build 260908-005</span>
       </div>
     </div>
   </header>
@@ -1217,7 +1266,8 @@ header {
       <h3>🔍 Buyer Directory & Quick Filters</h3>
       <div class="buyer-search-hero">
         <label for="searchKeyword">🔎 BUYER NAME / PHONE</label>
-        <input type="search" id="searchKeyword" enterkeyhint="search" autocomplete="off" placeholder="Search buyer name or phone • Enter clears all filters" oninput="currentPage=1; renderTable()" onkeydown="return handleBuyerSearchKeydown(event)">
+        <input type="search" id="searchKeyword" enterkeyhint="search" autocomplete="off" placeholder="Search buyer name or phone • Enter clears all filters" oninput="handleBuyerSearchInput()" onkeydown="return handleBuyerSearchKeydown(event)">
+        <div id="buyerSearchMatchCount" class="buyer-search-match-count" aria-live="polite"></div>
         <div class="buyer-search-help">Searches instantly. Press Enter to clear every filter and continue typing here.</div>
       </div>
       <div class="grid">
@@ -1774,6 +1824,60 @@ header {
       const index = Number(indexValue);
       if (Number.isInteger(index) && buyers[index] && (!name || String(buyers[index].name || '').trim().toLowerCase() === name)) return index;
       return -1;
+    }
+
+    let buyerSearchScrollTimer = null;
+
+    function getBuyerSearchTerm() {
+      const input = document.getElementById('searchKeyword');
+      return input ? input.value.trim() : '';
+    }
+
+    function updateBuyerSearchMode(matchCount = null) {
+      const directory = document.getElementById('tab-directory');
+      const term = getBuyerSearchTerm();
+      const active = term.length > 0;
+      if (directory) directory.classList.toggle('search-active', active);
+
+      const counter = document.getElementById('buyerSearchMatchCount');
+      if (counter) {
+        const count = matchCount == null ? getFilteredBuyers().length : matchCount;
+        counter.textContent = active ? `${count} match${count === 1 ? '' : 'es'} • results shown below` : '';
+      }
+    }
+
+    function handleBuyerSearchInput() {
+      currentPage = 1;
+      renderTable();
+      const term = getBuyerSearchTerm();
+      clearTimeout(buyerSearchScrollTimer);
+      if (!term) return;
+
+      // Search-only mode already removes the tall dashboard/filter controls.
+      // A light delayed nudge keeps the first buyer card directly under search
+      // while preserving keyboard focus on Android.
+      buyerSearchScrollTimer = setTimeout(() => {
+        const firstRow = document.querySelector('#buyerTableBody tr[id^="buyer-row-"]');
+        const searchBox = document.getElementById('searchKeyword');
+        if (!firstRow || !searchBox || document.activeElement !== searchBox) return;
+        const hero = searchBox.closest('.buyer-search-hero');
+        if (hero) hero.scrollIntoView({ behavior:'smooth', block:'start' });
+      }, 120);
+    }
+
+    function escapeRegExp(value) {
+      return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function highlightSearchText(value, term) {
+      const text = String(value ?? '');
+      if (!term) return text;
+      try {
+        const re = new RegExp(`(${escapeRegExp(term)})`, 'ig');
+        return text.replace(re, '<mark class="search-hit">$1</mark>');
+      } catch (_) {
+        return text;
+      }
     }
 
     // Inline handling keeps Enter inside the original user gesture, which is
@@ -2542,6 +2646,7 @@ header {
       document.getElementById('hideInactive').checked = true;
       currentPage = 1;
       renderTable();
+      updateBuyerSearchMode(0);
       if (focusSearch) {
         // First focus is synchronous; the later attempts cover mobile/PWA repaint.
         focusBuyerSearch();
@@ -2750,6 +2855,7 @@ header {
       const tbody = document.getElementById('buyerTableBody');
       if (!tbody) return;
       const filtered = getFilteredBuyers();
+      updateBuyerSearchMode(filtered.length);
       updateSelectionControls(filtered);
 
       const totalRecords = filtered.length;
@@ -2784,7 +2890,7 @@ header {
           <tr id="buyer-row-${actualIndex}">
             <td data-label="Select"><input type="checkbox" class="record-select" aria-label="Select ${b.name}" onchange="toggleBuyerSelection(${actualIndex}, this.checked)" ${selectedBuyerIndices.has(actualIndex) ? 'checked' : ''}></td>
             <td data-label="Buyer" class="buyer-outcome-cell">
-              <strong class="buyer-outcome-name">${b.name}</strong>
+              <strong class="buyer-outcome-name">${highlightSearchText(b.name, getBuyerSearchTerm())}</strong>
               <div class="outcome-control">
                 <span class="badge outcome-${(b.outcome || 'Active').toLowerCase().replace(/\s+/g, '-')}">${b.outcome || 'Active'}</span>
                 <div class="outcome-actions">
@@ -2802,7 +2908,7 @@ header {
                 <a href="tel:${b.phone}" onclick="beginBuyerCall(${actualIndex})" title="Call Buyer" style="text-decoration:none; margin-right:4px; font-size:15px;">📞</a>
                 <a href="https://wa.me/${cleanPhone}" target="_blank" onclick="logContactAction(${actualIndex}, 'WhatsApp')" title="WhatsApp Chat" style="text-decoration:none; margin-right:6px; font-size:15px;">💬</a>
                 <button type="button" onclick="openPostCallPanelForIndex(${actualIndex})" title="Add call note" style="width:auto; padding:3px 6px; margin-right:5px; background:#eef2ff; color:#303c91;">📝</button>
-                <span style="font-size:0.8rem;">${b.phone}</span>
+                <span style="font-size:0.8rem;">${highlightSearchText(b.phone, getBuyerSearchTerm())}</span>
               ` : '-'}
             </td>
 
@@ -3050,7 +3156,7 @@ header {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=260907004').catch(error => console.error('Service worker registration failed:', error));
+        navigator.serviceWorker.register('./sw.js?v=260908005').catch(error => console.error('Service worker registration failed:', error));
       });
     }
 
