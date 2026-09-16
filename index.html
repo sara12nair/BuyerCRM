@@ -1164,7 +1164,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260916-1325</span>
+        <span>Cloud Sync Active ⚡ · Build 260916-1353</span>
       </div>
     </div>
   </header>
@@ -1275,6 +1275,10 @@ header {
         </div>
         <div class="selection-toolbar-actions">
           <button type="button" id="toggleSelectFilteredBtn" onclick="toggleSelectAllFiltered()" class="btn-small" style="background:#475569; color:white;">☑ Select all filtered</button>
+          <select id="bulkAssignMember" class="btn-small" style="width:auto; min-width:145px; background:#fff; color:#334155;" aria-label="Assign selected buyers to team member">
+            <option value="">Assign Team…</option>
+          </select>
+          <button type="button" id="bulkAssignBtn" onclick="bulkAssignSelectedBuyers()" class="btn-small" style="background:#303c91; color:white;" disabled>Assign selected</button>
           <select id="exportSelectedFormat" class="btn-small" style="width:auto; min-width:120px; background:#fff; color:#334155;" aria-label="Export selected format">
             <option value="xlsx">Excel</option>
             <option value="pdf">PDF</option>
@@ -2198,11 +2202,18 @@ header {
       const temperatureOptions = temperatures.map(t => `<option value="${t}">${t}</option>`).join('');
 
       if (memberSelect) memberSelect.innerHTML = memberOptions;
+      const bulkAssignMember = document.getElementById('bulkAssignMember');
+      if (bulkAssignMember) bulkAssignMember.innerHTML = '<option value="">Assign Team…</option>' + teamMembers.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
       if (sourceSelect) sourceSelect.innerHTML = sourceOptions;
       if (stageSelect) stageSelect.innerHTML = stageOptions;
       if (temperatureSelect) temperatureSelect.innerHTML = temperatureOptions;
 
-      if (filterAgent) filterAgent.innerHTML = '<option value="ALL">All Team Members</option>' + teamMembers.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+      if (filterAgent) {
+        const previousAgentFilter = filterAgent.value || 'ALL';
+        const unassignedCount = buyers.filter(b => !String(b.member || '').trim()).length;
+        filterAgent.innerHTML = `<option value="ALL">All Team Members</option><option value="__UNASSIGNED__">⚠ Unassigned (${unassignedCount})</option>` + teamMembers.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
+        if ([...filterAgent.options].some(o => o.value === previousAgentFilter)) filterAgent.value = previousAgentFilter;
+      }
       if (filterSource) filterSource.innerHTML = '<option value="ALL">All Sources</option>' + sourceOptions;
       if (filterStage) filterStage.innerHTML = '<option value="ALL">All Stages</option>' + stageOptions;
 
@@ -2616,7 +2627,9 @@ header {
 
       const filtered = buyers.map((b, idx) => ({ ...b, originalIndex: idx })).filter(b => {
         if (hideInactive && (b.outcome === 'Failed' || b.stage === 'Not Responding' || b.stage === 'Not Interested')) return false;
-        if (agentFilter !== 'ALL' && b.member !== agentFilter) return false;
+        if (agentFilter === '__UNASSIGNED__') {
+          if (String(b.member || '').trim()) return false;
+        } else if (agentFilter !== 'ALL' && b.member !== agentFilter) return false;
         if (sourceFilter !== 'ALL' && b.source !== sourceFilter) return false;
         if (stageFilter !== 'ALL' && b.stage !== stageFilter) return false;
         if (outcomeFilter !== 'ALL' && (b.outcome || 'Active') !== outcomeFilter) return false;
@@ -2679,6 +2692,24 @@ header {
       document.getElementById('toggleSelectFilteredBtn').innerText = allFilteredSelected ? '☐ Deselect all filtered' : '☑ Select all filtered';
       document.getElementById('exportSelectedBtn').disabled = count === 0;
       document.getElementById('clearSelectionBtn').disabled = count === 0;
+      const bulkAssignBtn = document.getElementById('bulkAssignBtn');
+      if (bulkAssignBtn) bulkAssignBtn.disabled = count === 0;
+    }
+
+    function bulkAssignSelectedBuyers() {
+      const memberSelect = document.getElementById('bulkAssignMember');
+      const member = String(memberSelect?.value || '').trim();
+      const selected = Array.from(selectedBuyerIndices).filter(index => buyers[index]);
+      if (!selected.length) return alert('Please select at least one buyer record.');
+      if (!member) return alert('Please choose a team member first.');
+      if (!teamMembers.some(m => m.name === member)) return alert('Please choose a valid team member.');
+      if (!confirm(`Assign ${selected.length} selected buyer${selected.length === 1 ? '' : 's'} to ${member}?`)) return;
+      selected.forEach(index => { buyers[index].member = member; });
+      persistData();
+      selectedBuyerIndices.clear();
+      if (memberSelect) memberSelect.value = '';
+      renderDropdowns();
+      showCrmToast(`${selected.length} buyer${selected.length === 1 ? '' : 's'} assigned to ${member}`);
     }
 
     function safeFilenamePart(value) {
@@ -2700,6 +2731,7 @@ header {
     function getExportTeamFilenamePart() {
       const filterMember = (document.getElementById('filterAgent')?.value || 'ALL').trim();
       let member = filterMember;
+      if (member === '__UNASSIGNED__') return 'Unassigned';
 
       // If Team filter is All but every selected record belongs to the same team member,
       // use that member in the export filename (e.g. Arjun instead of All).
@@ -2733,177 +2765,154 @@ header {
       const source = document.getElementById('filterSource')?.value || 'ALL';
       const stage = document.getElementById('filterStage')?.value || 'ALL';
       const outcome = document.getElementById('filterOutcome')?.value || 'ALL';
+      const notes = (document.getElementById('searchNotes')?.value || '').trim();
+      const fromDate = document.getElementById('fromDate')?.value || '';
+      const toDate = document.getElementById('toDate')?.value || '';
       const parts = [];
       if (keyword) parts.push(`Search: ${keyword}`);
-      if (member !== 'ALL') parts.push(`Team: ${member}`);
+      if (member === '__UNASSIGNED__') parts.push('Team: Unassigned');
+      else if (member !== 'ALL') parts.push(`Team: ${member}`);
       if (source !== 'ALL') parts.push(`Source: ${source}`);
       if (stage !== 'ALL') parts.push(`Stage: ${stage}`);
       if (outcome !== 'ALL') parts.push(`Outcome: ${outcome}`);
+      if (notes) parts.push(`Notes: ${notes}`);
+      if (fromDate || toDate) parts.push(`Follow-up: ${fromDate || 'Any'} to ${toDate || 'Any'}`);
       return parts.length ? parts.join(' | ') : 'Selected buyers';
     }
 
+    function getExportFilterFilenamePart(selected) {
+      const parts = [];
+      const member = document.getElementById('filterAgent')?.value || 'ALL';
+      const source = document.getElementById('filterSource')?.value || 'ALL';
+      const stage = document.getElementById('filterStage')?.value || 'ALL';
+      const outcome = document.getElementById('filterOutcome')?.value || 'ALL';
+      if (member === '__UNASSIGNED__') parts.push('Unassigned');
+      else if (member !== 'ALL') parts.push((member.split(/\s+/)[0] || member));
+      else {
+        const members = [...new Set(selected.map(item => String(item.record.member || '').trim()).filter(Boolean))];
+        if (members.length === 1) parts.push(members[0].split(/\s+/)[0]);
+        else if (members.length === 0 && selected.length) parts.push('Unassigned');
+        else parts.push('All');
+      }
+      if (source !== 'ALL') parts.push(source);
+      if (stage !== 'ALL') parts.push(stage);
+      if (outcome !== 'ALL') parts.push(outcome);
+      return parts.map(safeFilenamePart).filter(Boolean).join('_') || 'All';
+    }
+
+    function getSortedSelectedBuyerRecords() {
+      return getSelectedBuyerRecords().sort((a,b) =>
+        String(a.record.name || '').localeCompare(String(b.record.name || ''), undefined, {sensitivity:'base', numeric:true})
+      );
+    }
+
     function exportSelectedBuyersPdf() {
-      const selectedRaw = getSelectedBuyerRecords();
-      if (!selectedRaw.length) { alert('Please select at least one buyer record.'); return; }
+      const selected = getSortedSelectedBuyerRecords();
+      if (!selected.length) { alert('Please select at least one buyer record.'); return; }
       if (!window.jspdf || !window.jspdf.jsPDF) {
         alert('PDF engine is not loaded. Please keep internet on, reopen the app, and try PDF again.');
         return;
       }
-
       try {
-        // Export exactly the records the user selected. No PDF-only deduplication.
-        const selected = selectedRaw;
-
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
         const ts = getPdfTimestampParts();
         const scope = getBuyerPdfScopeLabel(selected);
         const pageW = doc.internal.pageSize.getWidth();
         const pageH = doc.internal.pageSize.getHeight();
-        const left = 8, right = 8, top = 20, bottom = 14;
+        const left = 8, right = 8, top = 23, bottom = 14;
         const usableW = pageW - left - right;
+        // Offline follow-up sheet: only information needed while calling.
         const cols = [
-          ['Sl.',10], ['Buyer',26], ['Phone',23], ['Team',20], ['Source',18], ['Temp.',14],
-          ['Stage',22], ['Outcome',18], ['Last Contacted',23], ['Follow-up',26], ['Notes', usableW-200]
+          ['Sl.', 10], ['Name', 48], ['Phone', 31], ['Date', 24], ['Follow-up Notes', usableW - 121], ['✓', 8]
         ];
-        const lineH = 3.2, pad = 1.2;
+        const lineH = 4.2, pad = 1.5;
         let y = top;
-
         const safe = v => String(v == null ? '' : v).replace(/[\r\n]+/g, ' ').trim();
         const split = (txt, width) => doc.splitTextToSize(safe(txt), Math.max(3, width - pad*2));
 
         function drawHeader() {
-          doc.setTextColor(20, 24, 40);
-          doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('Buyer CRM', left, 8);
-          doc.setFont('helvetica','normal'); doc.setFontSize(7.2);
-          doc.text(doc.splitTextToSize(`${scope}  |  Records: ${selected.length}`, usableW), left, 13);
+          doc.setTextColor(20,24,40);
+          doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('Buyer CRM - Offline Follow-up', left, 8);
+          doc.setFont('helvetica','normal'); doc.setFontSize(9);
+          const scopeLines = doc.splitTextToSize(`${scope}  |  Records: ${selected.length}`, usableW);
+          doc.text(scopeLines, left, 13);
           let x = left;
-          // Keep the PDF column header white. Some PDF viewers rendered the previous
-          // very-light fill as a black band, hiding the headings.
-          doc.setDrawColor(150,150,150); doc.setTextColor(20,24,40);
-          doc.setFont('helvetica','bold'); doc.setFontSize(6.8);
+          doc.setDrawColor(120,120,120); doc.setTextColor(0,0,0);
+          doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
           cols.forEach(([label,w]) => {
-            // Explicit white fill + dark text for maximum compatibility across PDF viewers.
-            doc.setFillColor(255,255,255);
-            doc.setDrawColor(130,130,130);
-            doc.rect(x,y,w,6,'FD');
-            doc.setTextColor(0,0,0);
-            doc.setFont('helvetica','bold');
-            doc.setFontSize(6.8);
-            doc.text(String(label), x+pad, y+3.7);
+            doc.setFillColor(255,255,255); doc.rect(x,y,w,8,'FD');
+            doc.text(String(label), x+pad, y+5.2);
             x += w;
           });
-          y += 6;
+          y += 8;
         }
-
-        function newPage() { doc.addPage('a4','landscape'); y = top; drawHeader(); }
+        function newPage(){ doc.addPage('a4','landscape'); y=top; drawHeader(); }
         drawHeader();
 
         selected.forEach(({record:b}, rowIndex) => {
+          const existingNotes = [b.notes || '', b.followUpTime ? `Follow-up time: ${b.followUpTime}` : ''].filter(Boolean).join(' | ');
           const values = [
-            String(rowIndex + 1), b.name || '', formatPhoneForDisplay(b.phone || ''), b.member || 'Unassigned', b.source || '',
-            b.status || '', b.stage || '', b.outcome || 'Active', b.lastContacted || '',
-            [b.followUpDate || '', b.followUpTime || ''].filter(Boolean).join(' '), b.notes || ''
+            String(rowIndex+1), b.name || '', formatPhoneForDisplay(b.phone || ''), b.followUpDate || '', existingNotes, ''
           ];
-          const wrapped = values.map((v,i) => split(v, cols[i][1]));
-          const maxLines = Math.max(1, ...wrapped.map(a => a.length));
-          let rowH = Math.max(5.6, maxLines * lineH + pad*2);
-          if (rowH > pageH - top - bottom - 6) rowH = pageH - top - bottom - 6;
-          if (y + rowH > pageH - bottom) newPage();
-          let x = left;
-          doc.setFont('helvetica','normal'); doc.setFontSize(6.4); doc.setTextColor(20,24,40); doc.setDrawColor(180,180,180);
-          wrapped.forEach((lines,i) => {
-            const w = cols[i][1];
-            doc.rect(x,y,w,rowH);
-            const maxFit = Math.max(1, Math.floor((rowH-pad*2)/lineH));
-            const visible = lines.slice(0,maxFit);
-            const textBlockH = visible.length * lineH;
-            const textY = y + (rowH - textBlockH)/2 + lineH*0.72;
-            doc.text(visible, x+pad, textY);
-            x += w;
+          const wrapped = values.map((v,i)=>split(v,cols[i][1]));
+          const maxLines = Math.max(1,...wrapped.map(a=>a.length));
+          let rowH = Math.max(9.5, maxLines*lineH + pad*2); // writing room for offline follow-up
+          if (rowH > pageH-top-bottom-8) rowH = pageH-top-bottom-8;
+          if (y+rowH > pageH-bottom) newPage();
+          let x=left;
+          doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(20,24,40); doc.setDrawColor(175,175,175);
+          wrapped.forEach((lines,i)=>{
+            const w=cols[i][1]; doc.rect(x,y,w,rowH);
+            const maxFit=Math.max(1,Math.floor((rowH-pad*2)/lineH));
+            const visible=lines.slice(0,maxFit);
+            const blockH=visible.length*lineH;
+            const textY=y+(rowH-blockH)/2+lineH*0.72;
+            doc.text(visible,x+pad,textY);
+            x+=w;
           });
-          y += rowH;
+          y+=rowH;
         });
 
-        const total = doc.internal.getNumberOfPages();
-        for (let p=1; p<=total; p++) {
-          doc.setPage(p);
-          doc.setDrawColor(185,185,185); doc.line(left,pageH-9,pageW-right,pageH-9);
-          doc.setFont('helvetica','normal'); doc.setFontSize(7);
-          doc.text(`Printed ${ts.printed}`, left, pageH-5);
-          doc.text(`Page ${p} of ${total}`, pageW/2, pageH-5, {align:'center'});
-          // Render footer signature using the browser's Comic Sans font, then embed it as an image.
-          // This preserves the requested Comic Sans appearance because jsPDF does not ship with Comic Sans.
-          const sigCanvas = document.createElement('canvas');
-          let sigCtx = sigCanvas.getContext('2d');
-          sigCtx.font = '32px \"Comic Sans MS\", \"Comic Sans\", cursive';
-          const sigText = 'Sashi Nair';
-          sigCanvas.width = Math.ceil(sigCtx.measureText(sigText).width) + 16;
-          sigCanvas.height = 48;
-          sigCtx = sigCanvas.getContext('2d');
-          sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
-          sigCtx.font = '32px \"Comic Sans MS\", \"Comic Sans\", cursive';
-          sigCtx.fillStyle = '#000000';
-          sigCtx.textBaseline = 'middle';
-          sigCtx.fillText(sigText, 8, 24);
-          const sigH = 3.0; // approximately 8 pt on the PDF page
-          const sigW = sigH * (sigCanvas.width / sigCanvas.height);
-          doc.addImage(sigCanvas.toDataURL('image/png'), 'PNG', pageW-right-sigW, pageH-7.4, sigW, sigH);
+        const total=doc.internal.getNumberOfPages();
+        for(let p=1;p<=total;p++){
+          doc.setPage(p); doc.setDrawColor(185,185,185); doc.line(left,pageH-9,pageW-right,pageH-9);
+          doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.text(`Printed ${ts.printed}`,left,pageH-5);
+          doc.text(`Page ${p} of ${total}`,pageW/2,pageH-5,{align:'center'});
+          const sigCanvas=document.createElement('canvas'); let sigCtx=sigCanvas.getContext('2d');
+          sigCtx.font='32px "Comic Sans MS", "Comic Sans", cursive'; const sigText='Sashi Nair';
+          sigCanvas.width=Math.ceil(sigCtx.measureText(sigText).width)+16; sigCanvas.height=48;
+          sigCtx=sigCanvas.getContext('2d'); sigCtx.clearRect(0,0,sigCanvas.width,sigCanvas.height);
+          sigCtx.font='32px "Comic Sans MS", "Comic Sans", cursive'; sigCtx.fillStyle='#000'; sigCtx.textBaseline='middle'; sigCtx.fillText(sigText,8,24);
+          const sigH=3.0, sigW=sigH*(sigCanvas.width/sigCanvas.height);
+          doc.addImage(sigCanvas.toDataURL('image/png'),'PNG',pageW-right-sigW,pageH-7.4,sigW,sigH);
         }
-        doc.save(`Buyer_CRM_${getExportTeamFilenamePart()}_${ts.filename}.pdf`);
-      } catch (err) {
-        console.error('Buyer CRM PDF export failed:', err);
-        alert('PDF export failed: ' + (err && err.message ? err.message : 'Unknown error'));
+        doc.save(`Buyer_CRM_${getExportFilterFilenamePart(selected)}_${ts.filename}.pdf`);
+      } catch(err) {
+        console.error('Buyer CRM PDF export failed:',err);
+        alert('PDF export failed: '+(err&&err.message?err.message:'Unknown error'));
       }
     }
 
     function exportSelectedBuyers() {
-      if (typeof XLSX === 'undefined') {
-        alert('Excel support is not available. Please check your internet connection and try again.');
-        return;
-      }
-      const selected = getSelectedBuyerRecords();
-      if (!selected.length) {
-        alert('Please select at least one buyer record.');
-        return;
-      }
-
-      const worksheetData = selected.map(item => ({
-        'Buyer Name': item.record.name || '',
-        'Phone': item.record.phone || '',
-        'Team Member': item.record.member || 'Unassigned',
-        'Source': item.record.source || '',
-        'Temperature': item.record.status || '',
-        'Stage': item.record.stage || '',
-        'Outcome': item.record.outcome || 'Active',
-        'Won Project': item.record.wonProjectName || '',
-        'Plot Number': item.record.wonPlotNumber || '',
-        'Failed At Stage': item.record.failedAtStage || '',
-        'Failure Reason': item.record.failureReason || '',
-        'First Contact Date': item.record.firstContactDate || '',
-        'Last Contacted': item.record.lastContacted || '',
-        'Follow-up Date': item.record.followUpDate || '',
-        'Follow-up Time': item.record.followUpTime || '',
-        'Notes': item.record.notes || ''
+      if (typeof XLSX === 'undefined') { alert('Excel support is not available. Please check your internet connection and try again.'); return; }
+      const selected = getSortedSelectedBuyerRecords();
+      if (!selected.length) { alert('Please select at least one buyer record.'); return; }
+      const worksheetData = selected.map((item,index) => ({
+        'Sl.': index+1,
+        'Name': item.record.name || '',
+        'Phone': formatPhoneForDisplay(item.record.phone || ''),
+        'Date': item.record.followUpDate || '',
+        'Follow-up Notes': [item.record.notes || '', item.record.followUpTime ? `Follow-up time: ${item.record.followUpTime}` : ''].filter(Boolean).join(' | '),
+        '✓': ''
       }));
-      const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-      worksheet['!cols'] = [
-        { wch: 24 }, { wch: 16 }, { wch: 22 }, { wch: 18 }, { wch: 14 },
-        { wch: 22 }, { wch: 14 }, { wch: 22 }, { wch: 16 }, { wch: 22 },
-        { wch: 24 }, { wch: 18 }, { wch: 24 }, { wch: 18 }, { wch: 16 }, { wch: 52 }
-      ];
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Selected Buyers');
-
-      // Keep Excel and PDF export names identical apart from the extension.
-      const ts = getPdfTimestampParts();
-      const filename = `Buyer_CRM_${getExportTeamFilenamePart()}_${ts.filename}.xlsx`;
-      XLSX.writeFile(workbook, filename);
-
-      // Export is read-only. Do not open the post-export delete-record dialog.
-      pendingExportRecords = [];
-      selectedBuyerIndices.clear();
-      renderTable();
+      const worksheet=XLSX.utils.json_to_sheet(worksheetData);
+      worksheet['!cols']=[{wch:6},{wch:28},{wch:18},{wch:14},{wch:65},{wch:5}];
+      const workbook=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook,worksheet,'Offline Follow-up');
+      const ts=getPdfTimestampParts();
+      const filename=`Buyer_CRM_${getExportFilterFilenamePart(selected)}_${ts.filename}.xlsx`;
+      XLSX.writeFile(workbook,filename);
+      pendingExportRecords=[]; selectedBuyerIndices.clear(); renderTable();
     }
 
     function updateBulkDeleteButton() {
@@ -3047,7 +3056,7 @@ header {
               ` : '-'}
             </td>
 
-            <td data-label="Team">${b.member || 'Unassigned'}</td>
+            <td data-label="Team">${b.member ? b.member : '<span class="badge" style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;">⚠ Unassigned</span>'}</td>
             <td data-label="Source"><span class="source-tag">${b.source}</span></td>
             
             <td data-label="Status">
