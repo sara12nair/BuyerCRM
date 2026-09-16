@@ -1242,20 +1242,6 @@ header {
           <input type="text" id="searchNotes" placeholder="e.g. call, transfer, visit..." oninput="renderTable()">
         </div>
         <div>
-          <label for="sortOrder">Sort Order</label>
-          <select id="sortOrder" onchange="setSortOrder(this.value)">
-            <option value="newest" selected>Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="name-az">Buyer name A–Z</option>
-            <option value="name-za">Buyer name Z–A</option>
-            <option value="location-az">Location A–Z</option>
-            <option value="followup-asc">Follow-up earliest</option>
-            <option value="followup-desc">Follow-up latest</option>
-            <option value="lastcontact-desc">Last contacted newest</option>
-            <option value="column">Table-heading selection</option>
-          </select>
-        </div>
-        <div>
           <label for="fromDate">Follow Up (From Date)</label>
           <input type="date" id="fromDate" onchange="renderTable()">
         </div>
@@ -1654,7 +1640,6 @@ header {
 
     let currentSortColumn = '';
     let sortAscending = true;
-    let currentSortMode = 'newest';
     let allNotesExpanded = false;
     let currentPage = 1;
     let rowsPerPage = 50;
@@ -1768,6 +1753,17 @@ header {
       return String(value || '').replace(/\D/g, '');
     }
 
+    // Keep phone values digits-only so pasted spaces/dashes cannot create duplicates.
+    function normalizePhoneForStorage(value) {
+      return normalizePhoneForMatch(value);
+    }
+
+    function normalizePhoneInput(input) {
+      if (!input) return;
+      const cleaned = normalizePhoneForStorage(input.value);
+      if (input.value !== cleaned) input.value = cleaned;
+    }
+
     function resolveDialogBuyerIndex(indexValue, phoneValue, buyerIdValue = '', buyerNameValue = '', activeRef = null) {
       const referenceIndex = activeRef ? buyers.indexOf(activeRef) : -1;
       if (referenceIndex >= 0) return referenceIndex;
@@ -1832,6 +1828,7 @@ header {
       teamMembers = [...(teamMembers || [])].sort((a,b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity:'base' }));
       buyers.forEach(b => {
         ensureBuyerId(b);
+        b.phone = normalizePhoneForStorage(b.phone);
         if (!b.outcome) b.outcome = b.stage === 'Closed / Won' ? 'Won' : (b.stage === 'Not Responding' || b.stage === 'Not Interested' ? 'Failed' : 'Active');
         if (!b.status) b.status = 'Warm';
       });
@@ -2476,11 +2473,11 @@ header {
     function saveBuyer() {
       const index = parseInt(document.getElementById('editBuyerIndex').value, 10);
       const name = document.getElementById('buyerName').value.trim();
-      const phone = document.getElementById('buyerPhone').value.trim();
+      const phone = normalizePhoneForStorage(document.getElementById('buyerPhone').value);
       if (!name) return;
 
       if (phone) {
-        const duplicateIndex = buyers.findIndex((b, idx) => b.phone === phone && idx !== index);
+        const duplicateIndex = buyers.findIndex((b, idx) => normalizePhoneForMatch(b.phone) === phone && idx !== index);
         if (duplicateIndex !== -1) {
           alert(`⚠️ Duplicate Error: Phone number "${phone}" is already registered to "${buyers[duplicateIndex].name}".`);
           return;
@@ -2538,23 +2535,10 @@ header {
         sortAscending = true;
       }
 
-      currentSortMode = 'column';
-      const sortOrder = document.getElementById('sortOrder');
-      if (sortOrder) sortOrder.value = 'column';
       document.querySelectorAll('.sort-icon').forEach(span => span.innerText = '▲▼');
       const activeSpan = document.getElementById(`sort-${columnKey}`);
       if (activeSpan) activeSpan.innerText = sortAscending ? '▲' : '▼';
 
-      renderTable();
-    }
-
-    function setSortOrder(mode) {
-      currentSortMode = mode || 'newest';
-      currentPage = 1;
-      if (currentSortMode !== 'column') {
-        currentSortColumn = '';
-        document.querySelectorAll('.sort-icon').forEach(span => span.innerText = '▲▼');
-      }
       renderTable();
     }
 
@@ -2568,12 +2552,6 @@ header {
       document.getElementById('fromDate').value = '';
       document.getElementById('toDate').value = '';
       document.getElementById('hideInactive').checked = true;
-      currentSortMode = 'newest';
-      currentSortColumn = '';
-      sortAscending = true;
-      const sortOrder = document.getElementById('sortOrder');
-      if (sortOrder) sortOrder.value = 'newest';
-      document.querySelectorAll('.sort-icon').forEach(span => span.innerText = '▲▼');
       currentPage = 1;
       renderTable();
       if (focusSearch) {
@@ -2609,38 +2587,7 @@ header {
         return true;
       });
 
-      const compareText = (a, b) => String(a || '').localeCompare(String(b || ''), undefined, { sensitivity:'base', numeric:true });
-      const comparePresent = (a, b, direction = 1) => {
-        const av = String(a || '').trim(), bv = String(b || '').trim();
-        if (!av && !bv) return 0;
-        if (!av) return 1;
-        if (!bv) return -1;
-        return compareText(av, bv) * direction;
-      };
-
-      if (currentSortMode === 'newest') {
-        filtered.sort((a, b) => {
-          const byDate = comparePresent(a.firstContactDate, b.firstContactDate, -1);
-          return byDate || (b.originalIndex - a.originalIndex);
-        });
-      } else if (currentSortMode === 'oldest') {
-        filtered.sort((a, b) => {
-          const byDate = comparePresent(a.firstContactDate, b.firstContactDate);
-          return byDate || (a.originalIndex - b.originalIndex);
-        });
-      } else if (currentSortMode === 'name-az') {
-        filtered.sort((a, b) => compareText(a.name, b.name));
-      } else if (currentSortMode === 'name-za') {
-        filtered.sort((a, b) => compareText(b.name, a.name));
-      } else if (currentSortMode === 'location-az') {
-        filtered.sort((a, b) => comparePresent(a.location, b.location) || compareText(a.name, b.name));
-      } else if (currentSortMode === 'followup-asc') {
-        filtered.sort((a, b) => comparePresent(a.followUpDate, b.followUpDate));
-      } else if (currentSortMode === 'followup-desc') {
-        filtered.sort((a, b) => comparePresent(a.followUpDate, b.followUpDate, -1));
-      } else if (currentSortMode === 'lastcontact-desc') {
-        filtered.sort((a, b) => comparePresent(a.lastContacted, b.lastContacted, -1));
-      } else if (currentSortMode === 'column' && currentSortColumn) {
+      if (currentSortColumn) {
         filtered.sort((a, b) => {
           const valA = (a[currentSortColumn] || '').toString().toLowerCase();
           const valB = (b[currentSortColumn] || '').toString().toLowerCase();
@@ -3045,8 +2992,8 @@ header {
           const name = r[0] ? String(r[0]).trim() : '';
           if (!name) continue;
 
-          const phone = r[1] ? String(r[1]).trim() : '';
-          if (phone && buyers.some(b => String(b.phone || '').trim() === phone)) {
+          const phone = normalizePhoneForStorage(r[1]);
+          if (phone && buyers.some(b => normalizePhoneForMatch(b.phone) === phone)) {
             skippedDuplicates++;
             continue;
           }
@@ -3117,6 +3064,13 @@ header {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js?v=260907004').catch(error => console.error('Service worker registration failed:', error));
       });
+    }
+
+    const buyerPhoneInput = document.getElementById('buyerPhone');
+    if (buyerPhoneInput) {
+      buyerPhoneInput.addEventListener('input', () => normalizePhoneInput(buyerPhoneInput));
+      buyerPhoneInput.addEventListener('paste', () => setTimeout(() => normalizePhoneInput(buyerPhoneInput), 0));
+      buyerPhoneInput.addEventListener('blur', () => normalizePhoneInput(buyerPhoneInput));
     }
 
     const buyerTableBody = document.getElementById('buyerTableBody');
