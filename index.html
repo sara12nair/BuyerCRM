@@ -1155,7 +1155,110 @@ header {
     .selection-toolbar-actions button { flex: 1 1 145px; }
   }
 
-  </style>
+
+/* === WINDOWS DESKTOP WORKSPACE — TWEAK #2A === */
+@media screen and (min-width: 901px) {
+  body { padding-bottom: 24px; }
+  header { position: sticky; top: 0; padding: 12px 24px; }
+  .tab-nav { position: sticky; top: 72px; bottom: auto; max-width: 1400px; margin: 0 auto; border: 1px solid var(--border); border-top: 0; border-radius: 0 0 14px 14px; padding: 6px; box-shadow: 0 5px 18px rgba(15,23,42,.07); }
+  .tab-btn { flex-direction: row; justify-content: center; min-height: 42px; font-size: .78rem; }
+  .tab-btn .icon { font-size: 1rem; }
+  .tab-content { max-width: 1500px; padding: 16px 20px 28px; }
+  #tab-directory > .card:first-child { padding: 12px 16px !important; }
+  #tab-directory > .card:nth-of-type(2) { padding: 18px; }
+  #tab-directory .buyer-search-hero { position: sticky; top: 124px; z-index: 60; background: linear-gradient(135deg,#eef4ff,#f8f7ff); border: 2px solid #7c8be0; border-radius: 14px; padding: 12px 14px; box-shadow: 0 6px 18px rgba(76,81,191,.10); }
+  #tab-directory #searchKeyword { min-height: 48px; font-size: 1rem; font-weight: 600; background: white; }
+  #tab-directory > .card:nth-of-type(2) .grid { grid-template-columns: repeat(4,minmax(160px,1fr)); gap: 12px; }
+  #tab-directory > .card:nth-of-type(3) { padding: 14px; }
+  #tab-directory .table-responsive { overflow-x: visible; border: 0; }
+  #tab-directory table { min-width: 0; table-layout: fixed; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  #tab-directory th, #tab-directory td { padding: 8px 7px; overflow-wrap: anywhere; }
+  #tab-directory th:nth-child(1), #tab-directory td:nth-child(1) { width: 4%; }
+  #tab-directory th:nth-child(2), #tab-directory td:nth-child(2) { width: 18%; }
+  #tab-directory th:nth-child(3), #tab-directory td:nth-child(3) { width: 11%; }
+  #tab-directory th:nth-child(4), #tab-directory td:nth-child(4) { width: 8%; }
+  #tab-directory th:nth-child(5), #tab-directory td:nth-child(5) { width: 7%; }
+  #tab-directory th:nth-child(6), #tab-directory td:nth-child(6) { width: 7%; }
+  #tab-directory th:nth-child(7), #tab-directory td:nth-child(7) { width: 9%; }
+  #tab-directory th:nth-child(8), #tab-directory td:nth-child(8) { width: 9%; }
+  #tab-directory th:nth-child(9), #tab-directory td:nth-child(9) { width: 9%; }
+  #tab-directory th:nth-child(10), #tab-directory td:nth-child(10) { width: 11%; }
+  #tab-directory th:nth-child(11), #tab-directory td:nth-child(11) { width: 7%; }
+  #tab-directory .expandable-notes { max-width: none; }
+  #tab-directory .buyer-outcome-header, #tab-directory .buyer-outcome-cell { position: static !important; min-width: 0 !important; box-shadow: none !important; }
+  #tab-directory .outcome-actions button { padding: 5px 6px; font-size: 10px; }
+}
+
+  
+/* WINDOWS DESKTOP SPACE TWEAK — collapse date columns only on desktop.
+   Data and top Follow Up filters remain unchanged; Android/mobile remains unchanged. */
+@media screen and (min-width: 769px) {
+  #tab-directory .desktop-collapsible-date { display: none !important; }
+}
+
+/* WINDOWS FINAL POLISH — 260917-2128. Desktop only; mobile rules untouched. */
+@media screen and (min-width: 901px) {
+  /* Rebalance visible directory columns after desktop date columns are collapsed. */
+  #tab-directory th:nth-child(1), #tab-directory td:nth-child(1) { width: 4%; }
+  #tab-directory th:nth-child(2), #tab-directory td:nth-child(2) { width: 20%; }
+  #tab-directory th:nth-child(3), #tab-directory td:nth-child(3) { width: 15%; }
+  #tab-directory th:nth-child(4), #tab-directory td:nth-child(4) { width: 10%; }
+  #tab-directory th:nth-child(5), #tab-directory td:nth-child(5) { width: 8%; }
+  #tab-directory th:nth-child(6), #tab-directory td:nth-child(6) { width: 8%; }
+  #tab-directory th:nth-child(7), #tab-directory td:nth-child(7) { width: 11%; }
+  #tab-directory th:nth-child(10), #tab-directory td:nth-child(10) { width: 18%; }
+  #tab-directory th:nth-child(11), #tab-directory td:nth-child(11) { width: 6%; }
+  #tab-directory td[data-label="Phone & Connect"] { white-space: normal !important; }
+  #tab-directory td[data-label="Team"] { overflow-wrap: normal; word-break: normal; }
+  #tab-directory .outcome-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:3px; margin-top:4px; }
+  #tab-directory .outcome-actions button { min-width:0; padding:4px 3px; font-size:9px; white-space:nowrap; }
+  #tab-directory td[data-label="Actions"] { text-align:center; white-space:nowrap; }
+  #tab-directory .buyer-icon-action { width:34px; height:34px; padding:0; margin:0 2px; font-size:16px; line-height:1; border-radius:8px; }
+
+  /* Add/Edit Buyer: compact centered desktop workspace, with actions always easy to reach. */
+  #tab-add-buyer .card { max-width:1120px; margin:0 auto 24px; padding:22px; }
+  #tab-add-buyer .grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px 16px; }
+  #tab-add-buyer #buyerNotes { min-height:100px; }
+  #buyerForm > div:last-child { position:sticky; bottom:10px; z-index:35; background:rgba(255,255,255,.96); backdrop-filter:blur(8px); border:1px solid var(--border); border-radius:12px; padding:10px; box-shadow:0 8px 24px rgba(15,23,42,.12); }
+  #buyerForm > div:last-child #saveBuyerBtn { width:auto; min-width:220px; }
+
+  /* Call-note / Won / Failed workflow panels should behave like dialogs on Windows. */
+  .call-note-backdrop { align-items:flex-start; padding:24px; }
+  .call-note-backdrop.active { display:flex; }
+  .call-note-panel { width:min(720px,calc(100vw - 64px)); max-height:calc(100vh - 80px); overflow:auto; margin:40px auto; padding:22px; }
+  .call-note-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .call-note-actions { position:sticky; bottom:-22px; background:#fff; padding:12px 0 2px; }
+  .confirm-box { width:min(520px,calc(100vw - 64px)); }
+}
+
+
+/* DEPLOYMENT POLISH — 260917-2141. Desktop only. */
+@media screen and (min-width: 901px) {
+  /* Buyer/outcome and Team surrender space to the operationally important phone. */
+  #tab-directory th:nth-child(2), #tab-directory td:nth-child(2) { width: 14%; }
+  #tab-directory th:nth-child(3), #tab-directory td:nth-child(3) { width: 19%; }
+  #tab-directory th:nth-child(4), #tab-directory td:nth-child(4) { width: 6%; }
+  #tab-directory th:nth-child(5), #tab-directory td:nth-child(5) { width: 8%; }
+  #tab-directory th:nth-child(6), #tab-directory td:nth-child(6) { width: 8%; }
+  #tab-directory th:nth-child(7), #tab-directory td:nth-child(7) { width: 11%; }
+  #tab-directory th:nth-child(10), #tab-directory td:nth-child(10) { width: 23%; }
+  #tab-directory th:nth-child(11), #tab-directory td:nth-child(11) { width: 7%; }
+
+  #tab-directory td[data-label="Phone & Connect"] { white-space: nowrap !important; overflow: visible; }
+  #tab-directory .team-short { display:inline-block; max-width:7ch; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; cursor:help; }
+
+  /* One compact colour-coded outcome control replaces three permanent buttons. */
+  #tab-directory .outcome-actions { display:none !important; }
+  #tab-directory .outcome-control { min-width:0; margin-top:5px; }
+  #tab-directory .outcome-compact-select { width:100%; min-height:30px; padding:4px 5px; border-radius:8px; font-size:10px; font-weight:800; cursor:pointer; }
+  #tab-directory .outcome-compact-select.outcome-active { background:#eef2ff; color:#3730a3; border-color:#c7d2fe; }
+  #tab-directory .outcome-compact-select.outcome-on-hold { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+  #tab-directory .outcome-compact-select.outcome-won { background:#dcfce7; color:#166534; border-color:#86efac; }
+  #tab-directory .outcome-compact-select.outcome-failed { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+  #tab-directory .buyer-outcome-name { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+}
+
+</style>
 </head>
 <body>
 
@@ -1164,7 +1267,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260917-1458</span>
+        <span>Cloud Sync Active ⚡ · Build 260917-2141</span>
       </div>
     </div>
   </header>
@@ -1218,9 +1321,9 @@ header {
     <div class="card">
       <h3>🔍 Buyer Directory & Quick Filters</h3>
       <div class="buyer-search-hero">
-        <label for="searchKeyword">🔎 BUYER NAME / PHONE</label>
-        <input type="search" id="searchKeyword" enterkeyhint="search" autocomplete="off" placeholder="Search buyer name or phone • Enter clears all filters" oninput="currentPage=1; renderTable()" onkeydown="return handleBuyerSearchKeydown(event)">
-        <div class="buyer-search-help">Searches instantly. Press Enter to clear every filter and continue typing here.</div>
+        <label for="searchKeyword">🔎 BUYER / PHONE / NOTES</label>
+        <input type="search" id="searchKeyword" enterkeyhint="search" autocomplete="off" placeholder="Search buyer name, phone or notes • Enter clears all filters" oninput="currentPage=1; renderTable()" onkeydown="return handleBuyerSearchKeydown(event)">
+        <div class="buyer-search-help">Universal search across Buyer Name, Phone and Notes. Press Enter to clear every filter and continue typing here.</div>
       </div>
       <div class="grid">
         <div>
@@ -1298,8 +1401,8 @@ header {
               <th onclick="sortTable('source')">Source <span id="sort-source" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('status')">Status <span id="sort-status" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('stage')">Stage <span id="sort-stage" class="sort-icon">▲▼</span></th>
-              <th onclick="sortTable('lastContacted')">Last Contacted <span id="sort-lastContacted" class="sort-icon">▲▼</span></th>
-              <th onclick="sortTable('followUpDate')">Follow Up <span id="sort-followUpDate" class="sort-icon">▲▼</span></th>
+              <th class="desktop-collapsible-date" onclick="sortTable('lastContacted')">Last Contacted <span id="sort-lastContacted" class="sort-icon">▲▼</span></th>
+              <th class="desktop-collapsible-date" onclick="sortTable('followUpDate')">Follow Up <span id="sort-followUpDate" class="sort-icon">▲▼</span></th>
               <th>Notes</th>
               <th>Actions</th>
             </tr>
@@ -1344,7 +1447,8 @@ header {
           </div>
           <div>
             <label for="buyerPhone">Phone</label>
-            <input type="tel" id="buyerPhone" placeholder="Enter phone number">
+            <input type="tel" id="buyerPhone" placeholder="10-digit Indian mobile">
+            <label style="margin-top:7px;text-transform:none;font-weight:500;display:flex;align-items:center;gap:7px;"><input type="checkbox" id="buyerPhoneInternational" style="width:16px;height:16px;"> International / Overseas number</label>
             <div id="phoneDuplicateHint" style="display:none;margin-top:6px;padding:7px 9px;border-radius:7px;background:#fff7ed;color:#9a3412;font-size:.78rem;"></div>
           </div>
           <div>
@@ -1769,6 +1873,15 @@ header {
       return buyer ? buyer.crmId : '';
     }
 
+    function normalizeBuyerName(value) {
+      const raw = String(value || '').replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
+      if (!raw) return '';
+      return raw.split(' ').map(part => {
+        if (/^[A-Za-z]{1,2}$/.test(part)) return part.toUpperCase();
+        return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+      }).join(' ');
+    }
+
     function normalizePhoneForMatch(value) {
       let digits = String(value || '').replace(/\D/g, '');
       // Canonical Indian mobile matching: +91 / 91 prefix and a plain 10-digit number
@@ -1879,6 +1992,7 @@ header {
       teamMembers = [...(teamMembers || [])].sort((a,b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity:'base' }));
       buyers.forEach(b => {
         ensureBuyerId(b);
+        b.name = normalizeBuyerName(b.name);
         b.phone = normalizePhoneForStorage(b.phone);
         if (!b.outcome) b.outcome = b.stage === 'Closed / Won' ? 'Won' : (b.stage === 'Not Responding' || b.stage === 'Not Interested' ? 'Failed' : 'Active');
         if (!b.status) b.status = 'Warm';
@@ -2503,6 +2617,7 @@ header {
       document.getElementById('buyerName').value = buyer.name || '';
       document.getElementById('buyerFirstContactDate').value = buyer.firstContactDate || '';
       document.getElementById('buyerPhone').value = buyer.phone || '';
+      const intlBox = document.getElementById('buyerPhoneInternational'); if (intlBox) intlBox.checked = buyer.phoneInternational === true || (normalizePhoneForMatch(buyer.phone).length !== 10 && !!buyer.phone);
       document.getElementById('assignedMember').value = buyer.member || '';
       document.getElementById('leadSource').value = buyer.source || '';
       document.getElementById('leadStatus').value = buyer.status || 'Warm';
@@ -2560,9 +2675,21 @@ header {
 
     function saveBuyer() {
       const index = parseInt(document.getElementById('editBuyerIndex').value, 10);
-      const name = document.getElementById('buyerName').value.trim();
-      const phone = normalizePhoneForStorage(document.getElementById('buyerPhone').value);
+      const name = normalizeBuyerName(document.getElementById('buyerName').value);
+      const phoneInputRaw = document.getElementById('buyerPhone').value;
+      const phone = normalizePhoneForStorage(phoneInputRaw);
+      const internationalPhone = document.getElementById('buyerPhoneInternational')?.checked === true;
       if (!name) return;
+      if (phone && !internationalPhone && !/^[6-9]\d{9}$/.test(phone)) {
+        alert('⚠ Phone number should be a valid 10-digit Indian mobile number starting with 6, 7, 8 or 9. For an overseas number, tick “International / Overseas number”.');
+        document.getElementById('buyerPhone').focus();
+        return;
+      }
+      if (phone && internationalPhone && (phone.length < 7 || phone.length > 15)) {
+        alert('⚠ Please enter a valid international phone number (7–15 digits including country code).');
+        document.getElementById('buyerPhone').focus();
+        return;
+      }
 
       if (phone) {
         const duplicateIndex = buyers.findIndex((b, idx) => normalizePhoneForMatch(b.phone) === phone && idx !== index);
@@ -2591,6 +2718,7 @@ header {
         name: name,
         firstContactDate: document.getElementById('buyerFirstContactDate').value,
         phone: phone,
+        phoneInternational: internationalPhone,
         member: document.getElementById('assignedMember').value || 'Unassigned',
         source: document.getElementById('leadSource').value,
         status: document.getElementById('leadStatus').value,
@@ -2705,7 +2833,8 @@ header {
         if (searchKeyword) {
           const nameMatch = String(b.name || '').toLowerCase().includes(searchKeyword);
           const phoneMatch = searchLooksNumeric && normalizePhoneForMatch(b.phone).includes(searchPhoneDigits);
-          if (!nameMatch && !phoneMatch) return false;
+          const notesMatch = String(b.notes || '').toLowerCase().includes(searchKeyword);
+          if (!nameMatch && !phoneMatch && !notesMatch) return false;
         }
         if (searchNotes && !(b.notes || '').toLowerCase().includes(searchNotes)) return false;
         if (fromDate && b.followUpDate && b.followUpDate < fromDate) return false;
@@ -3118,6 +3247,15 @@ header {
       }).join('\u001f');
     }
 
+    function changeCompactOutcome(actualIndex, action) {
+      if (action === 'Active' || action === 'On Hold') {
+        quickSetOutcome(actualIndex, action);
+      } else if (action === 'Won' || action === 'Failed') {
+        openOutcomeDialog(actualIndex, action);
+        // If the dialog is cancelled, the next render restores the saved outcome.
+      }
+    }
+
     function renderTable() {
       const tbody = document.getElementById('buyerTableBody');
       if (!tbody) return;
@@ -3163,14 +3301,12 @@ header {
             <td data-label="Buyer" class="buyer-outcome-cell">
               <strong class="buyer-outcome-name">${b.name}</strong>
               <div class="outcome-control">
-                <span class="badge outcome-${(b.outcome || 'Active').toLowerCase().replace(/\s+/g, '-')}">${b.outcome || 'Active'}</span>
-                <div class="outcome-actions">
-                  ${(b.outcome || 'Active') === 'Active'
-                    ? `<button type="button" data-buyer-index="${actualIndex}" data-outcome-action="On Hold" title="Put on hold">⏸ Hold</button>`
-                    : `<button type="button" data-buyer-index="${actualIndex}" data-outcome-action="Active" title="Reactivate">▶ Active</button>`}
-                  <button type="button" data-buyer-index="${actualIndex}" data-outcome-action="Won" title="Mark won">🏆 Won</button>
-                  <button type="button" data-buyer-index="${actualIndex}" data-outcome-action="Failed" title="Mark failed">✖ Failed</button>
-                </div>
+                <select class="outcome-compact-select outcome-${(b.outcome || 'Active').toLowerCase().replace(/\s+/g, '-')}" aria-label="Change outcome for ${b.name}" title="Outcome: ${b.outcome || 'Active'}" onchange="changeCompactOutcome(${actualIndex}, this.value)">
+                  <option value="Active" ${(b.outcome || 'Active') === 'Active' ? 'selected' : ''}>● Active</option>
+                  <option value="On Hold" ${b.outcome === 'On Hold' ? 'selected' : ''}>● Hold</option>
+                  <option value="Won" ${b.outcome === 'Won' ? 'selected' : ''}>● Won</option>
+                  <option value="Failed" ${b.outcome === 'Failed' ? 'selected' : ''}>● Failed</option>
+                </select>
               </div>
             </td>
             
@@ -3183,7 +3319,7 @@ header {
               ` : '-'}
             </td>
 
-            <td data-label="Team">${b.member ? b.member : '<span class="badge" style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;">⚠ Unassigned</span>'}</td>
+            <td data-label="Team">${b.member ? `<span class="team-short" title="${b.member}">${b.member}</span>` : '<span class="badge" style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;">⚠ Unassigned</span>'}</td>
             <td data-label="Source"><span class="source-tag">${b.source}</span></td>
             
             <td data-label="Status">
@@ -3200,8 +3336,8 @@ header {
                 ${getOrderedStageOptions(b.stage).map(st => `<option value="${st}" ${st === b.stage ? 'selected' : ''}>${st}</option>`).join('')}
               </select>
             </td>
-            <td data-label="Last Contacted"><span class="last-contacted-badge">${b.lastContacted || '-'}</span></td>
-            <td data-label="Follow Up"><strong>${followUpString}</strong></td>
+            <td class="desktop-collapsible-date" data-label="Last Contacted"><span class="last-contacted-badge">${b.lastContacted || '-'}</span></td>
+            <td class="desktop-collapsible-date" data-label="Follow Up"><strong>${followUpString}</strong></td>
             
             <td data-label="Notes" style="max-width: 240px;">
               <div id="note-${actualIndex}" class="expandable-notes ${allNotesExpanded ? 'active' : ''}" style="margin-bottom:4px;">${b.notes || 'No notes'}</div>
@@ -3212,8 +3348,8 @@ header {
             </td>
 
             <td data-label="Actions" style="white-space: nowrap;">
-              <button type="button" class="btn-edit" onclick="editBuyer(${actualIndex})">Edit</button>
-              <button type="button" class="btn-danger" onclick="deleteBuyer(${actualIndex})">Delete</button>
+              <button type="button" class="btn-edit buyer-icon-action" onclick="editBuyer(${actualIndex})" title="Edit buyer" aria-label="Edit buyer ${b.name}">✏️</button>
+              <button type="button" class="btn-danger buyer-icon-action" onclick="deleteBuyer(${actualIndex})" title="Delete buyer" aria-label="Delete buyer ${b.name}">🗑️</button>
             </td>
           </tr>
         `;
@@ -3354,7 +3490,7 @@ header {
           const r = rows[i];
           if (!r || r.length === 0) continue;
 
-          const name = r[0] ? String(r[0]).trim() : '';
+          const name = r[0] ? normalizeBuyerName(r[0]) : '';
           if (!name) continue;
 
           const phone = normalizePhoneForStorage(r[1]);
@@ -3433,7 +3569,7 @@ header {
 
     const buyerPhoneInput = document.getElementById('buyerPhone');
     if (buyerPhoneInput) {
-      buyerPhoneInput.addEventListener('input', () => { normalizePhoneInput(buyerPhoneInput); updatePhoneDuplicateHint(); });
+      buyerPhoneInput.addEventListener('input', () => { if (!document.getElementById('buyerPhoneInternational')?.checked) normalizePhoneInput(buyerPhoneInput); updatePhoneDuplicateHint(); });
       buyerPhoneInput.addEventListener('paste', () => setTimeout(() => { normalizePhoneInput(buyerPhoneInput); updatePhoneDuplicateHint(); }, 0));
       buyerPhoneInput.addEventListener('blur', () => { normalizePhoneInput(buyerPhoneInput); updatePhoneDuplicateHint(); });
     }
