@@ -1164,7 +1164,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260916-1353</span>
+        <span>Cloud Sync Active ⚡ · Build 260917-1331</span>
       </div>
     </div>
   </header>
@@ -1668,13 +1668,18 @@ header {
 
       const targetTab = document.getElementById(tabId);
       if (targetTab) targetTab.classList.add('active');
-      
+
       const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => {
         const onclickAttr = btn.getAttribute('onclick');
         return onclickAttr && onclickAttr.includes(tabId);
       });
       if (activeBtn) activeBtn.classList.add('active');
-      if (tabId === 'tab-directory') setTimeout(() => focusBuyerSearch(), 80);
+
+      if (tabId === 'tab-directory') {
+        setTimeout(() => focusBuyerSearch(), 80);
+      } else if (tabId === 'tab-add-buyer' && parseInt(document.getElementById('editBuyerIndex').value, 10) < 0) {
+        setTimeout(() => prepareNewBuyerEntry(), 0);
+      }
     }
 
     let teamMembers = [];
@@ -1714,7 +1719,11 @@ header {
         searchFocusedOnce = true;
         setTimeout(() => focusBuyerSearch(), 120);
       }
-    });
+    
+      if (tabId === 'tab-add-buyer' && parseInt(document.getElementById('editBuyerIndex').value, 10) < 0) {
+        prepareNewBuyerEntry();
+      }
+});
 
     function getDefaultTeam() {
       return [
@@ -2520,6 +2529,35 @@ header {
       }
     }
 
+    function getTodayLocalDate() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function prepareNewBuyerEntry() {
+      const form = document.getElementById('buyerForm');
+      if (!form) return;
+
+      document.getElementById('editBuyerIndex').value = "-1";
+      form.reset();
+      document.getElementById('buyerFormHeading').innerText = '📌 Buyer Information & Tracking';
+      document.getElementById('saveBuyerBtn').innerText = 'SAVE BUYER RECORD';
+      document.getElementById('cancelBuyerEditBtn').style.display = 'none';
+
+      const firstContact = document.getElementById('buyerFirstContactDate');
+      if (firstContact) firstContact.value = getTodayLocalDate();
+
+      updatePhoneDuplicateHint();
+
+      setTimeout(() => {
+        const phoneInput = document.getElementById('buyerPhone');
+        if (phoneInput) phoneInput.focus();
+      }, 80);
+    }
+
     function saveBuyer() {
       const index = parseInt(document.getElementById('editBuyerIndex').value, 10);
       const name = document.getElementById('buyerName').value.trim();
@@ -2563,8 +2601,33 @@ header {
 
       persistData();
       document.getElementById('searchKeyword').value = '';
-      resetBuyerForm();
-      switchTab('tab-directory');
+      if (index >= 0) {
+        resetBuyerForm();
+        switchTab('tab-directory');
+      } else {
+        const batchDefaults = {
+          firstContactDate: document.getElementById('buyerFirstContactDate').value,
+          member: document.getElementById('assignedMember').value,
+          source: document.getElementById('leadSource').value,
+          status: document.getElementById('leadStatus').value,
+          stage: document.getElementById('lifecycleStage').value,
+          outcome: document.getElementById('leadOutcome').value
+        };
+
+        switchTab('tab-add-buyer');
+
+        setTimeout(() => {
+          document.getElementById('buyerFirstContactDate').value = batchDefaults.firstContactDate || getTodayLocalDate();
+          document.getElementById('assignedMember').value = batchDefaults.member;
+          document.getElementById('leadSource').value = batchDefaults.source;
+          document.getElementById('leadStatus').value = batchDefaults.status;
+          document.getElementById('lifecycleStage').value = batchDefaults.stage;
+          document.getElementById('leadOutcome').value = batchDefaults.outcome;
+
+          const phoneInput = document.getElementById('buyerPhone');
+          if (phoneInput) phoneInput.focus();
+        }, 120);
+      }
     }
 
     function resetBuyerForm() {
@@ -2653,6 +2716,10 @@ header {
           if (valA > valB) return sortAscending ? 1 : -1;
           return 0;
         });
+      } else {
+        // Default directory view: newest-added buyer first.
+        // originalIndex reflects insertion order in the existing buyers array.
+        filtered.sort((a, b) => b.originalIndex - a.originalIndex);
       }
       return filtered;
     }
@@ -2815,78 +2882,132 @@ header {
       }
       try {
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
         const ts = getPdfTimestampParts();
         const scope = getBuyerPdfScopeLabel(selected);
         const pageW = doc.internal.pageSize.getWidth();
         const pageH = doc.internal.pageSize.getHeight();
-        const left = 8, right = 8, top = 23, bottom = 14;
+        const left = 10, right = 10, top = 36, bottom = 15;
         const usableW = pageW - left - right;
-        // Offline follow-up sheet: only information needed while calling.
         const cols = [
-          ['Sl.', 10], ['Name', 48], ['Phone', 31], ['Date', 24], ['Follow-up Notes', usableW - 121], ['✓', 8]
+          ['Sl.', 9], ['Name', 38], ['Phone', 30], ['Date', 23], ['Follow-up Notes', usableW - 108], ['✓', 8]
         ];
-        const lineH = 4.2, pad = 1.5;
+        const lineH = 4.25, pad = 1.7;
         let y = top;
         const safe = v => String(v == null ? '' : v).replace(/[\r\n]+/g, ' ').trim();
         const split = (txt, width) => doc.splitTextToSize(safe(txt), Math.max(3, width - pad*2));
 
-        function drawHeader() {
-          doc.setTextColor(20,24,40);
-          doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('Buyer CRM - Offline Follow-up', left, 8);
-          doc.setFont('helvetica','normal'); doc.setFontSize(9);
-          const scopeLines = doc.splitTextToSize(`${scope}  |  Records: ${selected.length}`, usableW);
-          doc.text(scopeLines, left, 13);
+        const selectedMembers = [...new Set(selected.map(x => safe(x.record.member)).filter(Boolean))];
+        let teamLine = scope;
+        if (selectedMembers.length === 1) {
+          const memberName = selectedMembers[0];
+          const memberRecord = (teamMembers || []).find(m =>
+            safe(m.name).toLowerCase() === memberName.toLowerCase()
+          );
+          const memberPhone = memberRecord ? formatPhoneForDisplay(memberRecord.phone || '') : '';
+          teamLine = `Team: ${memberName}${memberPhone ? '  •  ' + memberPhone : ''}`;
+        }
+
+        function drawPageHeader() {
+          // Compact branded banner
+          doc.setFillColor(41,43,99);
+          doc.roundedRect(left, 7, usableW, 18, 3, 3, 'F');
+          doc.setTextColor(255,255,255);
+          doc.setFont('helvetica','bold'); doc.setFontSize(15);
+          doc.text('BUYER CRM', left + 5, 14);
+          doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+          doc.text('OFFLINE FOLLOW-UP SHEET', left + 5, 20);
+
+          // Assignment / record strip
+          doc.setFillColor(244,247,255);
+          doc.roundedRect(left, 27, usableW, 7, 2, 2, 'F');
+          doc.setTextColor(45,52,90);
+          doc.setFont('helvetica','bold'); doc.setFontSize(8.7);
+          const meta = `${teamLine}  •  Buyers: ${selected.length}`;
+          doc.text(doc.splitTextToSize(meta, usableW - 6)[0], left + 3, 31.7);
+
+          // Table header
           let x = left;
-          doc.setDrawColor(120,120,120); doc.setTextColor(0,0,0);
-          doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
+          // Printer-safe table heading: no fill, dark text, clear borders.
+          doc.setDrawColor(120,130,165);
+          doc.setTextColor(28,36,82);
+          doc.setFont('helvetica','bold');
+          doc.setFontSize(9.2);
           cols.forEach(([label,w]) => {
-            doc.setFillColor(255,255,255); doc.rect(x,y,w,8,'FD');
-            doc.text(String(label), x+pad, y+5.2);
+            doc.rect(x,y,w,8,'S');
+            doc.setTextColor(28,36,82);
+            doc.setFont('helvetica','bold');
+            doc.setFontSize(9.2);
+            doc.text(String(label), x + (w / 2), y + 5.2, { align: 'center' });
             x += w;
           });
+          doc.setLineWidth(0.45);
+          doc.line(left, y + 8, left + usableW, y + 8);
+          doc.setLineWidth(0.2);
           y += 8;
         }
-        function newPage(){ doc.addPage('a4','landscape'); y=top; drawHeader(); }
-        drawHeader();
+
+        function newPage() {
+          doc.addPage('a4','portrait');
+          y = top;
+          drawPageHeader();
+        }
+
+        drawPageHeader();
+
+        // Give short reports more handwriting room while keeping long reports efficient.
+        const availableRowsH = pageH - bottom - y;
+        const idealRowH = selected.length <= 18
+          ? Math.min(13.5, Math.max(10.5, availableRowsH / Math.max(selected.length, 1)))
+          : 9.5;
 
         selected.forEach(({record:b}, rowIndex) => {
-          const existingNotes = [b.notes || '', b.followUpTime ? `Follow-up time: ${b.followUpTime}` : ''].filter(Boolean).join(' | ');
+          const existingNotes = [b.notes || '', b.followUpTime ? `Follow-up time: ${b.followUpTime}` : '']
+            .filter(Boolean).join(' | ');
           const values = [
-            String(rowIndex+1), b.name || '', formatPhoneForDisplay(b.phone || ''), b.followUpDate || '', existingNotes, ''
+            String(rowIndex+1), b.name || '', formatPhoneForDisplay(b.phone || ''),
+            b.followUpDate || '', existingNotes, ''
           ];
           const wrapped = values.map((v,i)=>split(v,cols[i][1]));
           const maxLines = Math.max(1,...wrapped.map(a=>a.length));
-          let rowH = Math.max(9.5, maxLines*lineH + pad*2); // writing room for offline follow-up
-          if (rowH > pageH-top-bottom-8) rowH = pageH-top-bottom-8;
-          if (y+rowH > pageH-bottom) newPage();
-          let x=left;
-          doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(20,24,40); doc.setDrawColor(175,175,175);
+          let rowH = Math.max(idealRowH, maxLines*lineH + pad*2);
+          if (y + rowH > pageH - bottom) newPage();
+
+          let x = left;
+          doc.setDrawColor(198,203,220);
+
           wrapped.forEach((lines,i)=>{
-            const w=cols[i][1]; doc.rect(x,y,w,rowH);
-            const maxFit=Math.max(1,Math.floor((rowH-pad*2)/lineH));
-            const visible=lines.slice(0,maxFit);
-            const blockH=visible.length*lineH;
-            const textY=y+(rowH-blockH)/2+lineH*0.72;
+            const w = cols[i][1];
+            // Body cells: no fill. Stroke border only for clean printer-friendly output.
+            doc.rect(x,y,w,rowH,'S');
+            const maxFit = Math.max(1,Math.floor((rowH-pad*2)/lineH));
+            const visible = lines.slice(0,maxFit);
+            const blockH = visible.length*lineH;
+            const textY = y+(rowH-blockH)/2+lineH*0.72;
+
+            // Explicit black body text for reliable PDF/print rendering.
+            doc.setTextColor(0,0,0);
+            doc.setFont('helvetica', i === 2 ? 'bold' : 'normal');
+            doc.setFontSize(i === 2 ? 9.6 : 9.4);
             doc.text(visible,x+pad,textY);
-            x+=w;
+            x += w;
           });
-          y+=rowH;
+          y += rowH;
         });
 
-        const total=doc.internal.getNumberOfPages();
+        const total = doc.internal.getNumberOfPages();
         for(let p=1;p<=total;p++){
-          doc.setPage(p); doc.setDrawColor(185,185,185); doc.line(left,pageH-9,pageW-right,pageH-9);
-          doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.text(`Printed ${ts.printed}`,left,pageH-5);
-          doc.text(`Page ${p} of ${total}`,pageW/2,pageH-5,{align:'center'});
-          const sigCanvas=document.createElement('canvas'); let sigCtx=sigCanvas.getContext('2d');
-          sigCtx.font='32px "Comic Sans MS", "Comic Sans", cursive'; const sigText='Sashi Nair';
-          sigCanvas.width=Math.ceil(sigCtx.measureText(sigText).width)+16; sigCanvas.height=48;
-          sigCtx=sigCanvas.getContext('2d'); sigCtx.clearRect(0,0,sigCanvas.width,sigCanvas.height);
-          sigCtx.font='32px "Comic Sans MS", "Comic Sans", cursive'; sigCtx.fillStyle='#000'; sigCtx.textBaseline='middle'; sigCtx.fillText(sigText,8,24);
-          const sigH=3.0, sigW=sigH*(sigCanvas.width/sigCanvas.height);
-          doc.addImage(sigCanvas.toDataURL('image/png'),'PNG',pageW-right-sigW,pageH-7.4,sigW,sigH);
+          doc.setPage(p);
+          doc.setDrawColor(205,208,220);
+          doc.line(left,pageH-10,pageW-right,pageH-10);
+          doc.setTextColor(90,96,115);
+          doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+          doc.text(`Printed ${ts.printed}`,left,pageH-5.5);
+          doc.text(`Page ${p} of ${total}`,pageW/2,pageH-5.5,{align:'center'});
+          doc.setFont('helvetica','bold');
+          doc.text('Sashi R Nair',pageW-right,pageH-5.5,{align:'right'});
         }
+
         doc.save(`Buyer_CRM_${getExportFilterFilenamePart(selected)}_${ts.filename}.pdf`);
       } catch(err) {
         console.error('Buyer CRM PDF export failed:',err);
@@ -2901,7 +3022,7 @@ header {
       const worksheetData = selected.map((item,index) => ({
         'Sl.': index+1,
         'Name': item.record.name || '',
-        'Phone': formatPhoneForDisplay(item.record.phone || ''),
+        'Phone': normalizePhoneForStorage(item.record.phone || ''),
         'Date': item.record.followUpDate || '',
         'Follow-up Notes': [item.record.notes || '', item.record.followUpTime ? `Follow-up time: ${item.record.followUpTime}` : ''].filter(Boolean).join(' | '),
         '✓': ''
