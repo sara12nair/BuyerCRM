@@ -1164,7 +1164,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260917-1331</span>
+        <span>Cloud Sync Active ⚡ · Build 260917-1458</span>
       </div>
     </div>
   </header>
@@ -2574,6 +2574,17 @@ header {
 
       const existingRecord = index >= 0 ? buyers[index] : {};
 
+      // Continuous manual entry: capture shared batch fields BEFORE persistence
+      // rebuilds dropdowns, otherwise Team/Source/etc. can revert to defaults.
+      const batchDefaults = index < 0 ? {
+        firstContactDate: document.getElementById('buyerFirstContactDate').value,
+        member: document.getElementById('assignedMember').value,
+        source: document.getElementById('leadSource').value,
+        status: document.getElementById('leadStatus').value,
+        stage: document.getElementById('lifecycleStage').value,
+        outcome: document.getElementById('leadOutcome').value
+      } : null;
+
       const buyerRecord = {
         ...existingRecord,
         crmId: existingRecord.crmId || createBuyerId(),
@@ -2605,28 +2616,23 @@ header {
         resetBuyerForm();
         switchTab('tab-directory');
       } else {
-        const batchDefaults = {
-          firstContactDate: document.getElementById('buyerFirstContactDate').value,
-          member: document.getElementById('assignedMember').value,
-          source: document.getElementById('leadSource').value,
-          status: document.getElementById('leadStatus').value,
-          stage: document.getElementById('lifecycleStage').value,
-          outcome: document.getElementById('leadOutcome').value
-        };
+        // Clear buyer-specific fields for the next record.
+        prepareNewBuyerEntry();
 
-        switchTab('tab-add-buyer');
-
-        setTimeout(() => {
+        // Restore only the shared fields from this continuous manual-entry batch.
+        if (batchDefaults) {
           document.getElementById('buyerFirstContactDate').value = batchDefaults.firstContactDate || getTodayLocalDate();
           document.getElementById('assignedMember').value = batchDefaults.member;
           document.getElementById('leadSource').value = batchDefaults.source;
           document.getElementById('leadStatus').value = batchDefaults.status;
           document.getElementById('lifecycleStage').value = batchDefaults.stage;
           document.getElementById('leadOutcome').value = batchDefaults.outcome;
+        }
 
+        setTimeout(() => {
           const phoneInput = document.getElementById('buyerPhone');
           if (phoneInput) phoneInput.focus();
-        }, 120);
+        }, 100);
       }
     }
 
