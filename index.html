@@ -1258,6 +1258,14 @@ header {
   #tab-directory .buyer-outcome-name { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 }
 
+
+/* WINDOWS PHONE WIDTH POLISH — 260921-2230. Desktop only; logic/mobile untouched. */
+@media screen and (min-width: 901px) {
+  #tab-directory th:nth-child(2), #tab-directory td:nth-child(2) { width: 12% !important; }
+  #tab-directory th:nth-child(3), #tab-directory td:nth-child(3) { width: 22% !important; }
+  #tab-directory .outcome-compact-select { max-width: 150px; }
+  #tab-directory td[data-label="Phone & Connect"] { white-space: nowrap !important; overflow: visible !important; }
+}
 </style>
 </head>
 <body>
@@ -1267,7 +1275,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260917-2141</span>
+        <span>Cloud Sync Active ⚡ · Build 260921-2233</span>
       </div>
     </div>
   </header>
@@ -1764,6 +1772,7 @@ header {
     let crmToastTimer = null;
     let activeCallBuyerRef = null;
     let activeOutcomeBuyerRef = null;
+    let activeOutcomePreviousOutcome = null;
     const PENDING_CALL_KEY = 'buyer-crm-pending-call-v1';
 
     function switchTab(tabId) {
@@ -2300,11 +2309,19 @@ header {
         try { firstField.focus({ preventScroll: true }); } catch (_) { firstField.focus(); }
       });
     }
-    function closeOutcomeDialog(){returnToBuyerSearch()}
-    function saveOutcomeDialog(){const i=resolveDialogBuyerIndex(document.getElementById('outcomeBuyerIndex').value,document.getElementById('outcomeBuyerPhone').value,document.getElementById('outcomeBuyerId').value,document.getElementById('outcomeBuyerNameValue').value,activeOutcomeBuyerRef),mode=document.getElementById('outcomeMode').value,buyer=buyers[i];if(!buyer){returnToBuyerSearch();return alert('The selected buyer could not be matched. Please open the outcome again.')}const oldOutcome=buyer.outcome||'Active',oldDetails={wonProjectName:buyer.wonProjectName,wonPlotNumber:buyer.wonPlotNumber,wonAt:buyer.wonAt,failedAtStage:buyer.failedAtStage,failureReason:buyer.failureReason,failedAt:buyer.failedAt,followUpDate:buyer.followUpDate},timestamp=getShortFormattedTimestamp();let log='';
+    function closeOutcomeDialog(){
+      // Cancel is non-destructive: restore the outcome that was saved before the dialog opened.
+      if (activeOutcomeBuyerRef && activeOutcomePreviousOutcome !== null) {
+        activeOutcomeBuyerRef.outcome = activeOutcomePreviousOutcome;
+      }
+      activeOutcomePreviousOutcome = null;
+      renderTable();
+      returnToBuyerSearch();
+    }
+    function saveOutcomeDialog(){const i=resolveDialogBuyerIndex(document.getElementById('outcomeBuyerIndex').value,document.getElementById('outcomeBuyerPhone').value,document.getElementById('outcomeBuyerId').value,document.getElementById('outcomeBuyerNameValue').value,activeOutcomeBuyerRef),mode=document.getElementById('outcomeMode').value,buyer=buyers[i];if(!buyer){returnToBuyerSearch();return alert('The selected buyer could not be matched. Please open the outcome again.')}const oldOutcome=(activeOutcomePreviousOutcome !== null ? activeOutcomePreviousOutcome : (buyer.outcome||'Active')),oldDetails={wonProjectName:buyer.wonProjectName,wonPlotNumber:buyer.wonPlotNumber,wonAt:buyer.wonAt,failedAtStage:buyer.failedAtStage,failureReason:buyer.failureReason,failedAt:buyer.failedAt,followUpDate:buyer.followUpDate},timestamp=getShortFormattedTimestamp();let log='';
       if(mode==='Won'){const project=document.getElementById('wonProjectName').value.trim(),plot=document.getElementById('wonPlotNumber').value.trim(),remarks=document.getElementById('wonRemarks').value.trim();if(!project||!plot)return alert('Project Name and Plot Number are required for a Won buyer.');buyer.wonProjectName=project;buyer.wonPlotNumber=plot;buyer.wonAt=new Date().toISOString();buyer.outcome='Won';log=`[${timestamp}]: WON — ${project}, Plot ${plot}${remarks?' — '+remarks:''}`}
       else{const reason=document.getElementById('failureReasonSelect').value,remarks=document.getElementById('failedRemarks').value.trim(),future=document.getElementById('failedFollowUpDate').value;if(!reason)return alert('Please select a failure reason.');buyer.outcome='Failed';buyer.failedAtStage=buyer.stage||'';buyer.failureReason=reason;buyer.failedAt=new Date().toISOString();if(future)buyer.followUpDate=future;log=`[${timestamp}]: FAILED after ${buyer.stage||'Unknown stage'} — ${reason}${remarks?' — '+remarks:''}${future?' — Possible follow-up: '+future:''}`}
-      buyer.notes=buyer.notes?`${buyer.notes}\n${log}`:log;persistData();renderTable();returnToBuyerSearch();showCrmToast(`${buyer.name} marked ${mode}`,()=>undoOutcomeChange(i,oldOutcome,mode,oldDetails));
+      buyer.notes=buyer.notes?`${buyer.notes}\n${log}`:log;activeOutcomePreviousOutcome=null;persistData();renderTable();returnToBuyerSearch();showCrmToast(`${buyer.name} marked ${mode}`,()=>undoOutcomeChange(i,oldOutcome,mode,oldDetails));
     }
 
     function renderDropdowns() {
@@ -2823,7 +2840,16 @@ header {
       const hideInactive = document.getElementById('hideInactive').checked;
 
       const filtered = buyers.map((b, idx) => ({ ...b, originalIndex: idx })).filter(b => {
-        if (hideInactive && (b.outcome === 'Failed' || b.stage === 'Not Responding' || b.stage === 'Not Interested')) return false;
+        // Hide inactive records in the normal working view, but allow an explicit Outcome filter
+        // (especially Failed/Won) to override the hide switch for deliberate review.
+        const normalizedOutcome = String(b.outcome || 'Active').trim().toLowerCase();
+        const normalizedStage = String(b.stage || '').trim().toLowerCase();
+        const explicitOutcome = String(outcomeFilter || 'ALL').trim().toLowerCase();
+        if (hideInactive && explicitOutcome === 'all' && (
+          normalizedOutcome === 'failed' ||
+          normalizedStage === 'not responding' ||
+          normalizedStage === 'not interested'
+        )) return false;
         if (agentFilter === '__UNASSIGNED__') {
           if (String(b.member || '').trim()) return false;
         } else if (agentFilter !== 'ALL' && b.member !== agentFilter) return false;
@@ -2982,6 +3008,24 @@ header {
       return parts.length ? parts.join(' | ') : 'Selected buyers';
     }
 
+    function getBuyerPdfHeadingFilterLabel() {
+      const keyword = (document.getElementById('searchKeyword')?.value || '').trim();
+      const source = document.getElementById('filterSource')?.value || 'ALL';
+      const stage = document.getElementById('filterStage')?.value || 'ALL';
+      const outcome = document.getElementById('filterOutcome')?.value || 'ALL';
+      const notes = (document.getElementById('searchNotes')?.value || '').trim();
+      const fromDate = document.getElementById('fromDate')?.value || '';
+      const toDate = document.getElementById('toDate')?.value || '';
+      const parts = [];
+      if (keyword) parts.push(keyword);
+      if (source !== 'ALL') parts.push(source);
+      if (stage !== 'ALL') parts.push(stage);
+      if (outcome !== 'ALL') parts.push(outcome);
+      if (notes) parts.push(`Notes: ${notes}`);
+      if (fromDate || toDate) parts.push(`${fromDate || 'Any'} to ${toDate || 'Any'}`);
+      return [...new Set(parts)].join(' | ');
+    }
+
     function getExportFilterFilenamePart(selected) {
       const parts = [];
       const member = document.getElementById('filterAgent')?.value || 'ALL';
@@ -3020,6 +3064,7 @@ header {
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
         const ts = getPdfTimestampParts();
         const scope = getBuyerPdfScopeLabel(selected);
+        const headingFilter = getBuyerPdfHeadingFilterLabel();
         const pageW = doc.internal.pageSize.getWidth();
         const pageH = doc.internal.pageSize.getHeight();
         const left = 10, right = 10, top = 36, bottom = 15;
@@ -3051,7 +3096,8 @@ header {
           doc.setFont('helvetica','bold'); doc.setFontSize(15);
           doc.text('BUYER CRM', left + 5, 14);
           doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
-          doc.text('OFFLINE FOLLOW-UP SHEET', left + 5, 20);
+          const reportHeading = `OFFLINE FOLLOW-UP SHEET${headingFilter ? ' - ' + headingFilter : ''}`;
+          doc.text(doc.splitTextToSize(reportHeading, usableW - 10)[0], left + 5, 20);
 
           // Assignment / record strip
           doc.setFillColor(244,247,255);
@@ -3247,12 +3293,22 @@ header {
       }).join('\u001f');
     }
 
-    function changeCompactOutcome(actualIndex, action) {
+    function changeCompactOutcome(actualIndex, action, selectEl) {
+      const buyer = buyers[actualIndex];
+      if (!buyer) return;
+      const savedOutcome = buyer.outcome || 'Active';
       if (action === 'Active' || action === 'On Hold') {
         quickSetOutcome(actualIndex, action);
       } else if (action === 'Won' || action === 'Failed') {
+        // Keep the selected value stable while the details dialog is open.
+        // Nothing is persisted until Save; Cancel restores the previous outcome.
+        activeOutcomePreviousOutcome = savedOutcome;
+        buyer.outcome = action;
+        if (selectEl) {
+          selectEl.value = action;
+          selectEl.className = 'outcome-compact-select outcome-' + action.toLowerCase().replace(/\s+/g, '-');
+        }
         openOutcomeDialog(actualIndex, action);
-        // If the dialog is cancelled, the next render restores the saved outcome.
       }
     }
 
@@ -3301,7 +3357,7 @@ header {
             <td data-label="Buyer" class="buyer-outcome-cell">
               <strong class="buyer-outcome-name">${b.name}</strong>
               <div class="outcome-control">
-                <select class="outcome-compact-select outcome-${(b.outcome || 'Active').toLowerCase().replace(/\s+/g, '-')}" aria-label="Change outcome for ${b.name}" title="Outcome: ${b.outcome || 'Active'}" onchange="changeCompactOutcome(${actualIndex}, this.value)">
+                <select class="outcome-compact-select outcome-${(b.outcome || 'Active').toLowerCase().replace(/\s+/g, '-')}" aria-label="Change outcome for ${b.name}" title="Outcome: ${b.outcome || 'Active'}" onchange="changeCompactOutcome(${actualIndex}, this.value, this)">
                   <option value="Active" ${(b.outcome || 'Active') === 'Active' ? 'selected' : ''}>● Active</option>
                   <option value="On Hold" ${b.outcome === 'On Hold' ? 'selected' : ''}>● Hold</option>
                   <option value="Won" ${b.outcome === 'Won' ? 'selected' : ''}>● Won</option>
