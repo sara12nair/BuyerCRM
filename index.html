@@ -1232,7 +1232,7 @@ header {
 }
 
 
-/* DEPLOYMENT POLISH — 260917-2141. Desktop only. */
+/* DEPLOYMENT POLISH — 260922-1228. Desktop only. */
 @media screen and (min-width: 901px) {
   /* Buyer/outcome and Team surrender space to the operationally important phone. */
   #tab-directory th:nth-child(2), #tab-directory td:nth-child(2) { width: 14%; }
@@ -1275,7 +1275,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260921-2233</span>
+        <span>Cloud Sync Active ⚡ · Build 260922-2254</span>
       </div>
     </div>
   </header>
@@ -1311,15 +1311,15 @@ header {
           <div id="kpiTotal" style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">0</div>
         </div>
         <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
-          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Hot Leads 🔥</div>
-          <div id="kpiHot" style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">0</div>
+          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">New Leads</div>
+          <div id="kpiNew" style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">0</div>
         </div>
         <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
           <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Site Visits Scheduled</div>
           <div id="kpiVisits" style="font-size: 1.1rem; font-weight: 700; color: var(--teal);">0</div>
         </div>
         <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
-          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Won / Incentive Eligible 🏆</div>
+          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Booked 🏆</div>
           <div id="kpiWon" style="font-size: 1.1rem; font-weight: 700; color: var(--success);">0</div>
         </div>
       </div>
@@ -1347,10 +1347,6 @@ header {
           <select id="filterStage" onchange="renderTable()"><option value="ALL">All Stages</option></select>
         </div>
         <div>
-          <label for="filterOutcome">Outcome</label>
-          <select id="filterOutcome" onchange="renderTable()"><option value="ALL">All Outcomes</option><option>Active</option><option>On Hold</option><option>Won</option><option>Failed</option></select>
-        </div>
-        <div>
           <label for="searchNotes">Notes / Footnotes</label>
           <input type="text" id="searchNotes" placeholder="e.g. call, transfer, visit..." oninput="renderTable()">
         </div>
@@ -1368,7 +1364,7 @@ header {
         <div style="display: flex; align-items: center; gap: 8px;">
           <input type="checkbox" id="hideInactive" checked onchange="renderTable()" style="width: 16px; height: 16px; accent-color: var(--primary);">
           <label for="hideInactive" style="margin: 0; text-transform: none; cursor: pointer; font-weight: 500;">
-            Hide Failed / Inactive Buyers
+            Hide Not Interested / Not Responding
           </label>
         </div>
         <div style="display: flex; gap: 8px;">
@@ -1403,11 +1399,10 @@ header {
           <thead>
             <tr>
               <th>Select</th>
-              <th class="buyer-outcome-header" onclick="sortTable('name')">Buyer &amp; Outcome <span id="sort-name" class="sort-icon">▲▼</span></th>
+              <th class="buyer-outcome-header" onclick="sortTable('name')">Buyer <span id="sort-name" class="sort-icon">▲▼</span></th>
               <th>Phone & Connect</th>
               <th onclick="sortTable('member')">Team <span id="sort-member" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('source')">Source <span id="sort-source" class="sort-icon">▲▼</span></th>
-              <th onclick="sortTable('status')">Status <span id="sort-status" class="sort-icon">▲▼</span></th>
               <th onclick="sortTable('stage')">Stage <span id="sort-stage" class="sort-icon">▲▼</span></th>
               <th class="desktop-collapsible-date" onclick="sortTable('lastContacted')">Last Contacted <span id="sort-lastContacted" class="sort-icon">▲▼</span></th>
               <th class="desktop-collapsible-date" onclick="sortTable('followUpDate')">Follow Up <span id="sort-followUpDate" class="sort-icon">▲▼</span></th>
@@ -1470,22 +1465,10 @@ header {
 			</select>
           </div>
           <div>
-            <label for="leadStatus">Temperature</label>
-            <select id="leadStatus">
-              <option value="Hot">Hot</option>
-              <option value="Warm" selected>Warm</option>
-              <option value="Cold">Cold</option>
-            </select>
-          </div>
-          <div>
             <label for="lifecycleStage">Stage</label>
             <select id="lifecycleStage" required></select>
           </div>
-          <div>
-            <label for="leadOutcome">Outcome</label>
-            <select id="leadOutcome"><option>Active</option><option>On Hold</option></select>
-            <small style="display:block; margin-top:5px; color:var(--text-muted);">Use the Won / Failed actions in the directory so the required details are recorded.</small>
-          </div>
+          <input type="hidden" id="leadOutcome" value="Active">
           <div>
             <label for="followUpDate">Follow up</label>
             <input type="date" id="followUpDate">
@@ -1572,32 +1555,6 @@ header {
           ⚙️ Advanced Setup & Configuration (Rarely Used)
         </summary>
         
-        <!-- Manage Stages -->
-        <div style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
-          <h4 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted);">🔄 Manage Stages</h4>
-          <div style="font-size:.78rem;color:var(--text-muted);margin:-4px 0 10px;">Main workflow first; old and custom stages follow automatically in A–Z order.</div>
-          <form onsubmit="event.preventDefault(); saveStage();">
-            <input type="hidden" id="editStageIndex" value="-1">
-            <div class="grid">
-              <div>
-                <label for="stageInput">Stage Name</label>
-                <input type="text" id="stageInput" placeholder="e.g. Out of Coverage" required>
-              </div>
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 8px;">
-              <button type="submit" class="btn-manage" id="stageSubmitBtn" style="width: auto;">+ Add Stage</button>
-              <button type="button" id="cancelStageEditBtn" onclick="resetStageForm()" style="background:#64748b; color:white; display:none; width: auto;">Cancel</button>
-            </div>
-          </form>
-          <div id="stageListContainer" style="margin-top: 16px;"></div>
-        </div>
-
-        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
-          <h4 style="font-size:.9rem;text-transform:uppercase;color:var(--text-muted)">🌡️ Manage Temperature / Flag</h4>
-          <form onsubmit="event.preventDefault(); saveTemperature();"><input type="hidden" id="editTemperatureIndex" value="-1"><div class="grid"><div><label for="temperatureInput">Temperature Name</label><input id="temperatureInput" required placeholder="e.g. Very Hot"></div></div><div style="display:flex;gap:10px;margin-top:8px"><button id="temperatureSubmitBtn" class="btn-manage" style="width:auto">+ Add Temperature</button><button type="button" id="cancelTemperatureEditBtn" onclick="resetTemperatureForm()" style="display:none;width:auto;background:#64748b;color:white">Cancel</button></div></form>
-          <div id="temperatureListContainer" style="margin-top:16px"></div>
-        </div>
-
         <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
           <h4 style="font-size:.9rem;text-transform:uppercase;color:var(--text-muted)">✖ Manage Failure Reasons — A–Z</h4>
           <form onsubmit="event.preventDefault(); addFailureReason();"><div class="grid"><div><label for="failureReasonInput">Failure Reason</label><input id="failureReasonInput" required placeholder="e.g. Documentation issue"></div></div><button class="btn-manage" style="margin-top:8px;width:auto">+ Add Reason</button></form>
@@ -1773,7 +1730,9 @@ header {
     let activeCallBuyerRef = null;
     let activeOutcomeBuyerRef = null;
     let activeOutcomePreviousOutcome = null;
-    const PENDING_CALL_KEY = 'buyer-crm-pending-call-v1';
+    // A new key prevents unfinished call sessions from older app files from
+    // opening a note window without a current buyer.
+    const PENDING_CALL_KEY = 'buyer-crm-pending-call-stages-v2';
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -1833,7 +1792,7 @@ header {
         setTimeout(() => focusBuyerSearch(), 120);
       }
     
-      if (tabId === 'tab-add-buyer' && parseInt(document.getElementById('editBuyerIndex').value, 10) < 0) {
+      if (document.getElementById('tab-add-buyer').classList.contains('active') && parseInt(document.getElementById('editBuyerIndex').value, 10) < 0) {
         prepareNewBuyerEntry();
       }
 });
@@ -1883,12 +1842,21 @@ header {
     }
 
     function normalizeBuyerName(value) {
-      const raw = String(value || '').replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
+      let raw = String(value || '').replace(/\s+/g, ' ').trim();
       if (!raw) return '';
-      return raw.split(' ').map(part => {
+      // Preserve recognised professional titles while ordinary initials remain dot-free.
+      raw = raw.replace(/^doctor\.?\s+/i, 'Dr. ').replace(/^dr\.?\s+/i, 'Dr. ')
+               .replace(/^engineer\.?\s+/i, 'Er. ').replace(/^er\.?\s+/i, 'Er. ')
+               .replace(/^professor\.?\s+/i, 'Prof. ').replace(/^prof\.?\s+/i, 'Prof. ')
+               .replace(/^advocate\.?\s+/i, 'Adv. ').replace(/^adv\.?\s+/i, 'Adv. ');
+      const parts = raw.split(' ');
+      const title = /^(Dr\.|Er\.|Prof\.|Adv\.|CA|CS)$/i.test(parts[0]) ? parts.shift() : '';
+      const clean = parts.join(' ').replace(/\./g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).map(part => {
         if (/^[A-Za-z]{1,2}$/.test(part)) return part.toUpperCase();
         return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
       }).join(' ');
+      const canonical = title ? ({'dr.':'Dr.','er.':'Er.','prof.':'Prof.','adv.':'Adv.','ca':'CA','cs':'CS'}[title.toLowerCase()] || title) : '';
+      return [canonical, clean].filter(Boolean).join(' ');
     }
 
     function normalizePhoneForMatch(value) {
@@ -1923,6 +1891,14 @@ header {
       return digits;
     }
 
+    function whatsappNumber(value, international = false) {
+      const enteredDigits = String(value || '').replace(/\D/g, '');
+      if (!enteredDigits) return '';
+      if (international) return enteredDigits;
+      const digits = normalizePhoneForMatch(value);
+      return /^[6-9]\d{9}$/.test(digits) ? `91${digits}` : enteredDigits;
+    }
+
     function updatePhoneDuplicateHint() {
       const input = document.getElementById('buyerPhone');
       const hint = document.getElementById('phoneDuplicateHint');
@@ -1950,13 +1926,13 @@ header {
         const phoneIndex = buyers.findIndex(buyer => normalizePhoneForMatch(buyer.phone) === phone);
         if (phoneIndex >= 0) return phoneIndex;
       }
-      const name = String(buyerNameValue || '').trim().toLowerCase();
+      const name = normalizeBuyerName(buyerNameValue).toLowerCase();
       if (name) {
-        const nameMatches = buyers.map((buyer, index) => ({ buyer, index })).filter(item => String(item.buyer.name || '').trim().toLowerCase() === name);
+        const nameMatches = buyers.map((buyer, index) => ({ buyer, index })).filter(item => normalizeBuyerName(item.buyer.name).toLowerCase() === name);
         if (nameMatches.length === 1) return nameMatches[0].index;
       }
       const index = Number(indexValue);
-      if (Number.isInteger(index) && buyers[index] && (!name || String(buyers[index].name || '').trim().toLowerCase() === name)) return index;
+      if (Number.isInteger(index) && buyers[index] && (!name || normalizeBuyerName(buyers[index].name).toLowerCase() === name)) return index;
       return -1;
     }
 
@@ -1971,30 +1947,19 @@ header {
     }
 
     function getDefaultStages() {
-      return ['New Lead', 'Contacted', 'Interested', 'Project Presented', 'Site Visit', 'Negotiation'];
+      return ['New Lead', 'Interested', 'Site Visit', 'Negotiation', 'Booked', 'Not Interested', 'Not Responding'];
     }
 
     function getDefaultTemperatures() { return ['Hot', 'Warm', 'Cold']; }
     function getDefaultFailureReasons() { return ['Budget mismatch', 'Chose another project', 'Family decision', 'Loan / finance issue', 'Location not suitable', 'Not interested', 'Not responding', 'Other', 'Purchase postponed']; }
     function sortAZ(list) { return [...new Set((list || []).map(x => String(x || '').trim()).filter(Boolean))].sort((a,b) => a.localeCompare(b, undefined, { sensitivity:'base' })); }
     function getOrderedStageOptions(extraStages = []) {
-      const all = [...new Set([...(stages || []), ...(Array.isArray(extraStages) ? extraStages : [extraStages])].map(x => String(x || '').trim()).filter(Boolean))];
-      const workflow = getDefaultStages();
-      const mainStages = workflow.filter(stage => all.includes(stage));
-      const customStages = sortAZ(all.filter(stage => !workflow.includes(stage)));
-      return [...mainStages, ...customStages];
+      return getDefaultStages();
     }
     function normalizeCrmMastersAndBuyers() {
-      const workflow = getDefaultStages(), legacyOutcomeStages = new Set(['Closed / Won','Not Responding','Not Interested']);
-      if (!workflowV2Ready) {
-        const customStages = (stages || []).filter(st => !workflow.includes(st) && !legacyOutcomeStages.has(st) && st !== 'Site Visit Scheduled');
-        stages = [...workflow, ...customStages];
-        workflowV2Ready = true;
-      } else {
-        stages = (stages || []).filter(st => !legacyOutcomeStages.has(st));
-        if (!stages.length) stages = getDefaultStages();
-      }
-      stages = getOrderedStageOptions();
+      const workflow = getDefaultStages();
+      stages = [...workflow];
+      workflowV2Ready = true;
       temperatures = [...new Set((temperatures || getDefaultTemperatures()).map(x => String(x || '').trim()).filter(Boolean))];
       leadSources = sortAZ(leadSources || getDefaultSources());
       failureReasons = sortAZ(failureReasons || getDefaultFailureReasons());
@@ -2003,14 +1968,18 @@ header {
         ensureBuyerId(b);
         b.name = normalizeBuyerName(b.name);
         b.phone = normalizePhoneForStorage(b.phone);
-        if (!b.outcome) b.outcome = b.stage === 'Closed / Won' ? 'Won' : (b.stage === 'Not Responding' || b.stage === 'Not Interested' ? 'Failed' : 'Active');
-        if (!b.status) b.status = 'Warm';
+        // Simplified stage-only workflow. Preserve old records by mapping legacy stages.
+        if (b.stage === 'Contacted' || b.stage === 'Project Presented' || b.stage === 'Presented') b.stage = 'Interested';
+        if (b.stage === 'Site Visit Scheduled') b.stage = 'Site Visit';
+        if (b.stage === 'Closed / Won' || b.stage === 'Won') b.stage = 'Booked';
+        if (!getDefaultStages().includes(b.stage)) b.stage = 'New Lead';
+        if (!b.outcome) b.outcome = (b.stage === 'Booked' || b.stage === 'Closed / Won') ? 'Won' : (b.stage === 'Not Responding' || b.stage === 'Not Interested' ? 'Failed' : 'Active');
       });
     }
 
     function persistData() {
       stages = getOrderedStageOptions();
-      db.ref('teambuyers_crm').set({
+      return db.ref('teambuyers_crm').set({
         teamMembers,
         leadSources,
         stages,
@@ -2066,9 +2035,7 @@ header {
 
     function resolvePendingCallIndex(session) {
       if (!session) return -1;
-      let index = buyers.findIndex(b => String(b.phone || '') === String(session.phone || '') && String(b.name || '') === String(session.name || ''));
-      if (index < 0 && Number.isInteger(Number(session.index)) && buyers[Number(session.index)]) index = Number(session.index);
-      return index;
+      return resolveDialogBuyerIndex(session.index, session.phone, session.crmId, session.name);
     }
 
     function savePendingCallSession(session) {
@@ -2088,14 +2055,14 @@ header {
       if (!buyer) return;
       const timestamp = getShortFormattedTimestamp();
       buyer.lastContacted = `Call started on ${timestamp}`;
-      savePendingCallSession({ index: buyerIndex, name: buyer.name || '', phone: buyer.phone || '', startedAt: Date.now(), leftApp: false });
+      savePendingCallSession({ index: buyerIndex, crmId: ensureBuyerId(buyer), name: buyer.name || '', phone: buyer.phone || '', startedAt: Date.now(), leftApp: false, version: 2 });
       persistData();
     }
 
     function openPostCallPanelForIndex(actualIndex) {
       const buyer = buyers[actualIndex];
       if (!buyer) return;
-      openPostCallPanel({ index: actualIndex, name: buyer.name || '', phone: buyer.phone || '', startedAt: Date.now(), leftApp: true });
+      openPostCallPanel({ index: actualIndex, crmId: ensureBuyerId(buyer), name: buyer.name || '', phone: buyer.phone || '', startedAt: Date.now(), leftApp: true });
     }
 
     function openPostCallPanel(session) {
@@ -2112,8 +2079,8 @@ header {
       document.getElementById('callFollowUpDate').value = buyer.followUpDate || '';
       document.getElementById('callFollowUpTime').value = buyer.followUpTime || '';
       const stage = document.getElementById('callStage');
-      stage.innerHTML = getOrderedStageOptions(buyer.stage).map(st => `<option value="${st}">${st}</option>`).join('');
-      stage.value = buyer.stage || stages[0] || '';
+      stage.innerHTML = getOrderedStageOptions([...getDefaultStages(), buyer.stage]).map(st => `<option value="${st}">${st}</option>`).join('');
+      stage.value = buyer.stage || 'New Lead';
       document.getElementById('callNoteBackdrop').classList.add('active');
       setTimeout(() => document.getElementById('callNoteText').focus(), 100);
     }
@@ -2121,6 +2088,7 @@ header {
     function maybeResumePendingCall() {
       const session = readPendingCallSession();
       if (!session || document.getElementById('callNoteBackdrop').classList.contains('active')) return;
+      if (session.version !== 2 || resolvePendingCallIndex(session) < 0) { clearPendingCallSession(); return; }
       if (Date.now() - Number(session.startedAt || 0) > 24 * 60 * 60 * 1000) { clearPendingCallSession(); return; }
       if (session.leftApp || Date.now() - Number(session.startedAt || 0) > 3000) openPostCallPanel(session);
     }
@@ -2137,12 +2105,26 @@ header {
       returnToBuyerSearch();
     }
 
-    function savePostCallNote() {
-      const actualIndex = resolveDialogBuyerIndex(document.getElementById('callNoteBuyerIndex').value, document.getElementById('callNoteBuyerPhone').value, document.getElementById('callNoteBuyerId').value, document.getElementById('callNoteBuyerNameValue').value, activeCallBuyerRef), buyer = buyers[actualIndex];
+    async function savePostCallNote() {
+      const indexValue = document.getElementById('callNoteBuyerIndex').value;
+      const phoneValue = document.getElementById('callNoteBuyerPhone').value;
+      const idValue = document.getElementById('callNoteBuyerId').value;
+      const nameValue = document.getElementById('callNoteBuyerNameValue').value;
+      let actualIndex = resolveDialogBuyerIndex(indexValue, phoneValue, idValue, nameValue, activeCallBuyerRef);
+      if (actualIndex < 0) {
+        try {
+          const snapshot = await db.ref('teambuyers_crm/buyers').once('value');
+          const latestBuyers = snapshot.val();
+          if (Array.isArray(latestBuyers)) {
+            buyers = latestBuyers;
+            normalizeCrmMastersAndBuyers();
+            actualIndex = resolveDialogBuyerIndex(indexValue, phoneValue, idValue, nameValue);
+          }
+        } catch(err) { console.error('Could not refresh buyers for call note:',err); }
+      }
+      const buyer = buyers[actualIndex];
       if (!buyer) {
-        clearPendingCallSession();
-        returnToBuyerSearch();
-        return alert('The stored call session was cleared because that buyer could not be matched. Please open the buyer and add the note again.');
+        return alert('This call note has no matching buyer. Your text is kept here. Copy it, tap Skip for now, then open the note button beside the correct buyer.');
       }
       const outcome = document.getElementById('callOutcome').value;
       const note = document.getElementById('callNoteText').value.trim();
@@ -2151,16 +2133,27 @@ header {
       const timestamp = getShortFormattedTimestamp();
       let entry = `[${timestamp} Call - ${outcome}]` + (note ? `: ${note}` : '');
       if (newStage !== oldStage) entry += ` | Stage: ${oldStage || 'None'} → ${newStage}`;
-      buyer.notes = buyer.notes ? `${buyer.notes}\n${entry}` : entry;
-      buyer.lastContacted = `Call on ${timestamp} • ${outcome}`;
-      buyer.stage = newStage;
-      buyer.followUpDate = document.getElementById('callFollowUpDate').value;
-      buyer.followUpTime = document.getElementById('callFollowUpTime').value;
-      clearPendingCallSession();
-      persistData();
-      renderTable();
-      returnToBuyerSearch();
-      showCrmToast(`Call note saved for ${buyer.name}`);
+      const buyerId = ensureBuyerId(buyer);
+      const updated = {
+        ...buyer,
+        notes: buyer.notes ? `${buyer.notes}\n${entry}` : entry,
+        lastContacted: `Call on ${timestamp} • ${outcome}`,
+        stage: newStage,
+        followUpDate: document.getElementById('callFollowUpDate').value,
+        followUpTime: document.getElementById('callFollowUpTime').value
+      };
+      try {
+        const ref = db.ref(`teambuyers_crm/buyers/${actualIndex}`);
+        await ref.set(updated);
+        const saved = (await ref.once('value')).val();
+        if (!saved || saved.crmId !== buyerId || !String(saved.notes || '').includes(entry)) throw new Error('Call note verification failed');
+        clearPendingCallSession();
+        returnToBuyerSearch();
+        showCrmToast(`Call note saved for ${buyer.name}`);
+      } catch (err) {
+        console.error('Call note save failed:', err);
+        alert('The call note was not saved. Your text is still in this window; check the connection and try Save Call Note again.');
+      }
     }
 
     function logContactAction(buyerIndex, type) {
@@ -2224,7 +2217,7 @@ header {
       renderTable();
     }
 
-    function quickUpdateStage(actualIndex, newStage) {
+    async function quickUpdateStage(actualIndex, newStage) {
       const buyer = buyers[actualIndex];
       if (!buyer || !newStage || buyer.stage === newStage) return;
       const oldStage = buyer.stage || '';
@@ -2233,27 +2226,41 @@ header {
         highlightBuyerRecord(actualIndex);
         return;
       }
-      buyer.stage = newStage;
       const timestamp = getShortFormattedTimestamp();
       const logEntry = `[${timestamp}]: Stage changed from ${oldStage || 'None'} to ${newStage}`;
-      buyer.notes = buyer.notes ? `${buyer.notes}\n${logEntry}` : logEntry;
-      persistData();
-      renderTable();
-      highlightBuyerRecord(actualIndex);
-      showCrmToast(`Stage updated: ${newStage}`, () => undoStageChange(actualIndex, oldStage, newStage));
+      const updated = {...buyer, stage:newStage, notes:buyer.notes ? `${buyer.notes}\n${logEntry}` : logEntry};
+      try {
+        const ref = db.ref(`teambuyers_crm/buyers/${actualIndex}`);
+        await ref.set(updated);
+        const saved = (await ref.once('value')).val();
+        if (!saved || saved.stage !== newStage) throw new Error('Stage verification failed');
+        buyers[actualIndex] = saved;
+        renderTable();
+        highlightBuyerRecord(actualIndex);
+        showCrmToast(`Stage updated: ${newStage}`, () => undoStageChange(actualIndex, oldStage, newStage));
+      } catch(err) {
+        console.error('Stage save failed:', err);
+        renderTable();
+        alert('Stage was not saved. Please check the connection and try again.');
+      }
     }
 
-    function undoStageChange(actualIndex, oldStage, changedStage) {
+    async function undoStageChange(actualIndex, oldStage, changedStage) {
       const buyer = buyers[actualIndex];
       if (!buyer || buyer.stage !== changedStage) return showCrmToast('Stage changed again; Undo was not applied.');
-      buyer.stage = oldStage;
       const timestamp = getShortFormattedTimestamp();
       const logEntry = `[${timestamp}]: Stage change undone; restored to ${oldStage || 'None'}`;
-      buyer.notes = buyer.notes ? `${buyer.notes}\n${logEntry}` : logEntry;
-      persistData();
-      renderTable();
-      highlightBuyerRecord(actualIndex);
-      showCrmToast(`Stage restored to ${oldStage || 'None'}`);
+      const updated = {...buyer, stage:oldStage, notes:buyer.notes ? `${buyer.notes}\n${logEntry}` : logEntry};
+      try {
+        const ref = db.ref(`teambuyers_crm/buyers/${actualIndex}`);
+        await ref.set(updated);
+        const saved = (await ref.once('value')).val();
+        if (!saved || saved.stage !== oldStage) throw new Error('Stage undo verification failed');
+        buyers[actualIndex] = saved;
+        renderTable();
+        highlightBuyerRecord(actualIndex);
+        showCrmToast(`Stage restored to ${oldStage || 'None'}`);
+      } catch(err) {console.error('Stage undo failed:',err);alert('Stage could not be restored. Please check the connection.');}
     }
 
     function quickSetOutcome(actualIndex, newOutcome) {
@@ -2318,10 +2325,49 @@ header {
       renderTable();
       returnToBuyerSearch();
     }
-    function saveOutcomeDialog(){const i=resolveDialogBuyerIndex(document.getElementById('outcomeBuyerIndex').value,document.getElementById('outcomeBuyerPhone').value,document.getElementById('outcomeBuyerId').value,document.getElementById('outcomeBuyerNameValue').value,activeOutcomeBuyerRef),mode=document.getElementById('outcomeMode').value,buyer=buyers[i];if(!buyer){returnToBuyerSearch();return alert('The selected buyer could not be matched. Please open the outcome again.')}const oldOutcome=(activeOutcomePreviousOutcome !== null ? activeOutcomePreviousOutcome : (buyer.outcome||'Active')),oldDetails={wonProjectName:buyer.wonProjectName,wonPlotNumber:buyer.wonPlotNumber,wonAt:buyer.wonAt,failedAtStage:buyer.failedAtStage,failureReason:buyer.failureReason,failedAt:buyer.failedAt,followUpDate:buyer.followUpDate},timestamp=getShortFormattedTimestamp();let log='';
-      if(mode==='Won'){const project=document.getElementById('wonProjectName').value.trim(),plot=document.getElementById('wonPlotNumber').value.trim(),remarks=document.getElementById('wonRemarks').value.trim();if(!project||!plot)return alert('Project Name and Plot Number are required for a Won buyer.');buyer.wonProjectName=project;buyer.wonPlotNumber=plot;buyer.wonAt=new Date().toISOString();buyer.outcome='Won';log=`[${timestamp}]: WON — ${project}, Plot ${plot}${remarks?' — '+remarks:''}`}
-      else{const reason=document.getElementById('failureReasonSelect').value,remarks=document.getElementById('failedRemarks').value.trim(),future=document.getElementById('failedFollowUpDate').value;if(!reason)return alert('Please select a failure reason.');buyer.outcome='Failed';buyer.failedAtStage=buyer.stage||'';buyer.failureReason=reason;buyer.failedAt=new Date().toISOString();if(future)buyer.followUpDate=future;log=`[${timestamp}]: FAILED after ${buyer.stage||'Unknown stage'} — ${reason}${remarks?' — '+remarks:''}${future?' — Possible follow-up: '+future:''}`}
-      buyer.notes=buyer.notes?`${buyer.notes}\n${log}`:log;activeOutcomePreviousOutcome=null;persistData();renderTable();returnToBuyerSearch();showCrmToast(`${buyer.name} marked ${mode}`,()=>undoOutcomeChange(i,oldOutcome,mode,oldDetails));
+    async function saveOutcomeDialog(){
+      const i=resolveDialogBuyerIndex(document.getElementById('outcomeBuyerIndex').value,document.getElementById('outcomeBuyerPhone').value,document.getElementById('outcomeBuyerId').value,document.getElementById('outcomeBuyerNameValue').value,activeOutcomeBuyerRef),mode=document.getElementById('outcomeMode').value,buyer=buyers[i];
+      if(!buyer){returnToBuyerSearch();return alert('The selected buyer could not be matched. Please open the outcome again.')}
+      const oldOutcome=(activeOutcomePreviousOutcome !== null ? activeOutcomePreviousOutcome : (buyer.outcome||'Active')),oldDetails={wonProjectName:buyer.wonProjectName,wonPlotNumber:buyer.wonPlotNumber,wonAt:buyer.wonAt,failedAtStage:buyer.failedAtStage,failureReason:buyer.failureReason,failedAt:buyer.failedAt,followUpDate:buyer.followUpDate},timestamp=getShortFormattedTimestamp();let log='';
+      if(mode==='Won'){
+        const project=document.getElementById('wonProjectName').value.trim(),plot=document.getElementById('wonPlotNumber').value.trim(),remarks=document.getElementById('wonRemarks').value.trim();
+        if(!project||!plot)return alert('Project Name and Plot Number are required for a Won buyer.');
+        buyer.wonProjectName=project;buyer.wonPlotNumber=plot;buyer.wonAt=new Date().toISOString();buyer.outcome='Won';
+        log=`[${timestamp}]: WON — ${project}, Plot ${plot}${remarks?' — '+remarks:''}`;
+      } else {
+        const reason=document.getElementById('failureReasonSelect').value,remarks=document.getElementById('failedRemarks').value.trim(),future=document.getElementById('failedFollowUpDate').value;
+        if(!reason)return alert('Please select a failure reason.');
+        buyer.outcome='Failed';buyer.failedAtStage=buyer.stage||'';buyer.failureReason=reason;buyer.failedAt=new Date().toISOString();
+        if(future)buyer.followUpDate=future;
+        log=`[${timestamp}]: FAILED after ${buyer.stage||'Unknown stage'} — ${reason}${remarks?' — '+remarks:''}${future?' — Possible follow-up: '+future:''}`;
+      }
+      buyer.notes=buyer.notes?`${buyer.notes}\n${log}`:log;
+      activeOutcomePreviousOutcome=null;
+      try {
+        // Save ONLY this buyer record. Writing the whole CRM root here allowed the realtime
+        // listener to race with the outcome dialog and could restore an older Active/Hold value.
+        const buyerId = ensureBuyerId(buyer);
+        await db.ref(`teambuyers_crm/buyers/${i}`).set(buyer);
+        const snap = await db.ref(`teambuyers_crm/buyers/${i}`).once('value');
+        const saved = snap.val();
+        if (!saved || saved.outcome !== mode || (saved.crmId && saved.crmId !== buyerId)) {
+          throw new Error(`Outcome verification failed (expected ${mode}).`);
+        }
+        // Resolve again by stable CRM id in case realtime sync replaced the local array object.
+        const currentIndex = buyers.findIndex(x => x && x.crmId === buyerId);
+        const finalIndex = currentIndex >= 0 ? currentIndex : i;
+        buyers[finalIndex] = saved;
+        renderTable();
+        returnToBuyerSearch();
+        showCrmToast(`${saved.name || buyer.name} marked ${mode}`,()=>undoOutcomeChange(finalIndex,oldOutcome,mode,oldDetails));
+      } catch (err) {
+        console.error('Outcome save failed:', err);
+        const currentIndex = buyers.findIndex(x => x && x.crmId === buyer.crmId);
+        if (currentIndex >= 0) buyers[currentIndex].outcome = oldOutcome;
+        activeOutcomePreviousOutcome = oldOutcome;
+        renderTable();
+        alert('Outcome was NOT saved. Please check the internet/Firebase connection and try again.');
+      }
     }
 
     function renderDropdowns() {
@@ -2345,7 +2391,11 @@ header {
       const bulkAssignMember = document.getElementById('bulkAssignMember');
       if (bulkAssignMember) bulkAssignMember.innerHTML = '<option value="">Assign Team…</option>' + teamMembers.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
       if (sourceSelect) sourceSelect.innerHTML = sourceOptions;
-      if (stageSelect) stageSelect.innerHTML = stageOptions;
+      if (stageSelect) {
+        const selectedStage = stageSelect.value;
+        stageSelect.innerHTML = stageOptions;
+        if (selectedStage && [...stageSelect.options].some(o => o.value === selectedStage)) stageSelect.value = selectedStage;
+      }
       if (temperatureSelect) temperatureSelect.innerHTML = temperatureOptions;
 
       if (filterAgent) {
@@ -2355,7 +2405,11 @@ header {
         if ([...filterAgent.options].some(o => o.value === previousAgentFilter)) filterAgent.value = previousAgentFilter;
       }
       if (filterSource) filterSource.innerHTML = '<option value="ALL">All Sources</option>' + sourceOptions;
-      if (filterStage) filterStage.innerHTML = '<option value="ALL">All Stages</option>' + stageOptions;
+      if (filterStage) {
+        const selectedStageFilter = filterStage.value || 'ALL';
+        filterStage.innerHTML = '<option value="ALL">All Stages</option>' + stageOptions;
+        if ([...filterStage.options].some(o => o.value === selectedStageFilter)) filterStage.value = selectedStageFilter;
+      }
 
       renderTeamTable();
       renderStageList();
@@ -2510,7 +2564,7 @@ header {
           <td data-label="Name"><strong>${m.name}</strong></td>
           <td data-label="Phone & Connect">
             <a href="tel:${m.phone}" class="contact-link">📞 ${m.phone}</a>
-            <a href="https://wa.me/${m.phone.replace(/[^0-9]/g, '')}" target="_blank" class="wa-link">💬</a>
+            <a href="https://wa.me/${whatsappNumber(m.phone)}" target="_blank" class="wa-link">💬</a>
           </td>
           <td data-label="Designation"><span class="source-tag">${m.designation}</span></td>
           <td data-label="Action">
@@ -2637,9 +2691,8 @@ header {
       const intlBox = document.getElementById('buyerPhoneInternational'); if (intlBox) intlBox.checked = buyer.phoneInternational === true || (normalizePhoneForMatch(buyer.phone).length !== 10 && !!buyer.phone);
       document.getElementById('assignedMember').value = buyer.member || '';
       document.getElementById('leadSource').value = buyer.source || '';
-      document.getElementById('leadStatus').value = buyer.status || 'Warm';
       document.getElementById('lifecycleStage').value = buyer.stage || '';
-      document.getElementById('leadOutcome').value = ['Active', 'On Hold'].includes(buyer.outcome) ? buyer.outcome : 'Active';
+      document.getElementById('leadOutcome').value = ['Active', 'On Hold', 'Won', 'Failed'].includes(buyer.outcome) ? buyer.outcome : 'Active';
       document.getElementById('followUpDate').value = buyer.followUpDate || '';
       document.getElementById('followUpTime').value = buyer.followUpTime || '';
       document.getElementById('buyerNotes').value = buyer.notes || '';
@@ -2717,14 +2770,13 @@ header {
       }
 
       const existingRecord = index >= 0 ? buyers[index] : {};
-
       // Continuous manual entry: capture shared batch fields BEFORE persistence
       // rebuilds dropdowns, otherwise Team/Source/etc. can revert to defaults.
       const batchDefaults = index < 0 ? {
         firstContactDate: document.getElementById('buyerFirstContactDate').value,
         member: document.getElementById('assignedMember').value,
         source: document.getElementById('leadSource').value,
-        status: document.getElementById('leadStatus').value,
+        status: existingRecord.status || '',
         stage: document.getElementById('lifecycleStage').value,
         outcome: document.getElementById('leadOutcome').value
       } : null;
@@ -2738,11 +2790,10 @@ header {
         phoneInternational: internationalPhone,
         member: document.getElementById('assignedMember').value || 'Unassigned',
         source: document.getElementById('leadSource').value,
-        status: document.getElementById('leadStatus').value,
+        status: existingRecord.status || '',
         stage: document.getElementById('lifecycleStage').value,
-        outcome: ['Won', 'Failed'].includes(existingRecord.outcome)
-          ? existingRecord.outcome
-          : (document.getElementById('leadOutcome').value || existingRecord.outcome || 'Active'),
+        // Keep historical outcome data without exposing a second workflow.
+        outcome: existingRecord.outcome || 'Active',
         followUpDate: document.getElementById('followUpDate').value,
         followUpTime: document.getElementById('followUpTime').value,
         notes: document.getElementById('buyerNotes').value.trim(),
@@ -2769,7 +2820,6 @@ header {
           document.getElementById('buyerFirstContactDate').value = batchDefaults.firstContactDate || getTodayLocalDate();
           document.getElementById('assignedMember').value = batchDefaults.member;
           document.getElementById('leadSource').value = batchDefaults.source;
-          document.getElementById('leadStatus').value = batchDefaults.status;
           document.getElementById('lifecycleStage').value = batchDefaults.stage;
           document.getElementById('leadOutcome').value = batchDefaults.outcome;
         }
@@ -2810,7 +2860,6 @@ header {
       document.getElementById('filterAgent').value = 'ALL';
       document.getElementById('filterSource').value = 'ALL';
       document.getElementById('filterStage').value = 'ALL';
-      document.getElementById('filterOutcome').value = 'ALL';
       document.getElementById('searchKeyword').value = '';
       document.getElementById('searchNotes').value = '';
       document.getElementById('fromDate').value = '';
@@ -2830,7 +2879,6 @@ header {
       const agentFilter = document.getElementById('filterAgent').value;
       const sourceFilter = document.getElementById('filterSource').value;
       const stageFilter = document.getElementById('filterStage').value;
-      const outcomeFilter = document.getElementById('filterOutcome').value;
       const searchKeyword = document.getElementById('searchKeyword').value.toLowerCase().trim();
       const searchPhoneDigits = normalizePhoneForMatch(searchKeyword);
       const searchLooksNumeric = searchPhoneDigits.length > 0 && /^[\d\s()+.-]+$/.test(searchKeyword);
@@ -2840,13 +2888,11 @@ header {
       const hideInactive = document.getElementById('hideInactive').checked;
 
       const filtered = buyers.map((b, idx) => ({ ...b, originalIndex: idx })).filter(b => {
-        // Hide inactive records in the normal working view, but allow an explicit Outcome filter
-        // (especially Failed/Won) to override the hide switch for deliberate review.
-        const normalizedOutcome = String(b.outcome || 'Active').trim().toLowerCase();
+        // Hide inactive buyers whenever the checkbox is ON, including during
+        // universal/name/phone/notes searches. An explicit Stage filter remains
+        // the intentional way to retrieve Not Interested / Not Responding records.
         const normalizedStage = String(b.stage || '').trim().toLowerCase();
-        const explicitOutcome = String(outcomeFilter || 'ALL').trim().toLowerCase();
-        if (hideInactive && explicitOutcome === 'all' && (
-          normalizedOutcome === 'failed' ||
+        if (hideInactive && stageFilter === 'ALL' && (
           normalizedStage === 'not responding' ||
           normalizedStage === 'not interested'
         )) return false;
@@ -2855,7 +2901,6 @@ header {
         } else if (agentFilter !== 'ALL' && b.member !== agentFilter) return false;
         if (sourceFilter !== 'ALL' && b.source !== sourceFilter) return false;
         if (stageFilter !== 'ALL' && b.stage !== stageFilter) return false;
-        if (outcomeFilter !== 'ALL' && (b.outcome || 'Active') !== outcomeFilter) return false;
         if (searchKeyword) {
           const nameMatch = String(b.name || '').toLowerCase().includes(searchKeyword);
           const phoneMatch = searchLooksNumeric && normalizePhoneForMatch(b.phone).includes(searchPhoneDigits);
@@ -3300,10 +3345,11 @@ header {
       if (action === 'Active' || action === 'On Hold') {
         quickSetOutcome(actualIndex, action);
       } else if (action === 'Won' || action === 'Failed') {
-        // Keep the selected value stable while the details dialog is open.
-        // Nothing is persisted until Save; Cancel restores the previous outcome.
+        // IMPORTANT: do not change buyer.outcome here. The dropdown choice only opens
+        // the details dialog. The stored outcome changes only after Save Outcome.
         activeOutcomePreviousOutcome = savedOutcome;
-        buyer.outcome = action;
+        // Keep the user's selected Won/Failed value visible while the details dialog is open.
+        // Cancel restores the saved outcome; Save commits the selected outcome.
         if (selectEl) {
           selectEl.value = action;
           selectEl.className = 'outcome-compact-select outcome-' + action.toLowerCase().replace(/\s+/g, '-');
@@ -3337,14 +3383,14 @@ header {
       document.getElementById('pageIndicator').innerText = `${currentPage} / ${totalPages}`;
 
       if (pageSlice.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:#888; padding: 24px;">No matching records found.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#888; padding: 24px;">No matching records found.</td></tr>`;
         return;
       }
 
       document.getElementById('kpiTotal').innerText = filtered.length;
-      document.getElementById('kpiHot').innerText = filtered.filter(b => b.status === 'Hot').length;
+      document.getElementById('kpiNew').innerText = filtered.filter(b => b.stage === 'New Lead').length;
       document.getElementById('kpiVisits').innerText = filtered.filter(b => b.stage === 'Site Visit' || b.stage === 'Site Visit Scheduled').length;
-      document.getElementById('kpiWon').innerText = filtered.filter(b => b.outcome === 'Won' || b.stage === 'Closed / Won').length;
+      document.getElementById('kpiWon').innerText = filtered.filter(b => b.stage === 'Booked' || b.stage === 'Closed / Won').length;
 
       tbody.innerHTML = pageSlice.map(b => {
         const actualIndex = b.originalIndex;
@@ -3355,21 +3401,13 @@ header {
           <tr id="buyer-row-${actualIndex}">
             <td data-label="Select"><input type="checkbox" class="record-select" aria-label="Select ${b.name}" onchange="toggleBuyerSelection(${actualIndex}, this.checked)" ${selectedBuyerIndices.has(actualIndex) ? 'checked' : ''}></td>
             <td data-label="Buyer" class="buyer-outcome-cell">
-              <strong class="buyer-outcome-name">${b.name}</strong>
-              <div class="outcome-control">
-                <select class="outcome-compact-select outcome-${(b.outcome || 'Active').toLowerCase().replace(/\s+/g, '-')}" aria-label="Change outcome for ${b.name}" title="Outcome: ${b.outcome || 'Active'}" onchange="changeCompactOutcome(${actualIndex}, this.value, this)">
-                  <option value="Active" ${(b.outcome || 'Active') === 'Active' ? 'selected' : ''}>● Active</option>
-                  <option value="On Hold" ${b.outcome === 'On Hold' ? 'selected' : ''}>● Hold</option>
-                  <option value="Won" ${b.outcome === 'Won' ? 'selected' : ''}>● Won</option>
-                  <option value="Failed" ${b.outcome === 'Failed' ? 'selected' : ''}>● Failed</option>
-                </select>
-              </div>
+              <strong class="buyer-outcome-name" title="${String(b.name || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}">${b.name}</strong>
             </td>
             
             <td data-label="Phone & Connect" style="white-space: nowrap;">
               ${b.phone ? `
                 <a href="tel:${b.phone}" onclick="beginBuyerCall(${actualIndex})" title="Call Buyer" style="text-decoration:none; margin-right:4px; font-size:15px;">📞</a>
-                <a href="https://wa.me/${cleanPhone}" target="_blank" onclick="logContactAction(${actualIndex}, 'WhatsApp')" title="WhatsApp Chat" style="text-decoration:none; margin-right:6px; font-size:15px;">💬</a>
+                <a href="https://wa.me/${whatsappNumber(b.phone, b.phoneInternational === true)}" target="_blank" onclick="logContactAction(${actualIndex}, 'WhatsApp')" title="WhatsApp Chat" style="text-decoration:none; margin-right:6px; font-size:15px;">💬</a>
                 <button type="button" onclick="openPostCallPanelForIndex(${actualIndex})" title="Add call note" style="width:auto; padding:3px 6px; margin-right:5px; background:#eef2ff; color:#303c91;">📝</button>
                 <a href="tel:${cleanPhone}" onclick="beginBuyerCall(${actualIndex})" title="Call ${b.name}" style="font-size:0.8rem;text-decoration:none;color:inherit;font-weight:600;">${formatPhoneForDisplay(b.phone)}</a>
               ` : '-'}
@@ -3378,15 +3416,6 @@ header {
             <td data-label="Team">${b.member ? `<span class="team-short" title="${b.member}">${b.member}</span>` : '<span class="badge" style="background:#fff7ed;color:#9a3412;border:1px solid #fdba74;">⚠ Unassigned</span>'}</td>
             <td data-label="Source"><span class="source-tag">${b.source}</span></td>
             
-            <td data-label="Status">
-              <span class="badge badge-${(b.status || 'warm').toLowerCase()}">${b.status}</span>
-              <div style="margin-top: 4px;">
-                <select aria-label="Change temperature for ${b.name}" onchange="quickUpdateStatus(${actualIndex}, this.value)" style="font-size: 10px; padding: 2px; width: 100%;">
-                  ${[...new Set([...temperatures, b.status].filter(Boolean))].map(t => `<option value="${t}" ${t === b.status ? 'selected' : ''}>${t}</option>`).join('')}
-                </select>
-              </div>
-            </td>
-
             <td data-label="Stage">
               <select class="quick-stage-select" aria-label="Change stage for ${b.name}" onchange="quickUpdateStage(${actualIndex}, this.value)">
                 ${getOrderedStageOptions(b.stage).map(st => `<option value="${st}" ${st === b.stage ? 'selected' : ''}>${st}</option>`).join('')}
@@ -3413,7 +3442,7 @@ header {
     }
 
     function archiveInactiveBuyers(format) {
-      const inactiveBuyers = buyers.filter(b => b.outcome === 'Failed' || b.stage === 'Not Responding' || b.stage === 'Not Interested');
+      const inactiveBuyers = buyers.filter(b => b.stage === 'Not Responding' || b.stage === 'Not Interested');
       if (inactiveBuyers.length === 0) {
         alert("No inactive buyers found to archive.");
         return;
@@ -3425,7 +3454,6 @@ header {
       if (format === 'xlsx') {
         const worksheetData = inactiveBuyers.map(b => ({
           Buyer: b.name, Phone: b.phone, 'Team Member': b.member, Source: b.source, Temperature: b.status, Stage: b.stage,
-          Outcome: b.outcome || 'Failed', 'Failed At Stage': b.failedAtStage || '', 'Failure Reason': b.failureReason || '',
           'FollowUp Date': b.followUpDate, Notes: b.notes
         }));
         const worksheet = XLSX.utils.json_to_sheet(worksheetData);
@@ -3440,7 +3468,7 @@ header {
         a.click();
       }
 
-      buyers = buyers.filter(b => b.outcome !== 'Failed' && b.stage !== 'Not Responding' && b.stage !== 'Not Interested');
+      buyers = buyers.filter(b => b.stage !== 'Not Responding' && b.stage !== 'Not Interested');
       selectedBuyerIndices.clear();
       persistData();
       alert(`Successfully archived and purged ${inactiveBuyers.length} records.`);
@@ -3509,12 +3537,12 @@ header {
         return;
       }
 
-      const headers = ['Buyer Name', 'Phone', 'Team Member', 'Source', 'Temperature', 'Stage', 'Outcome', 'Follow-up Date', 'Follow-up Time', 'Notes'];
-      const sampleRow = ['Sample Buyer', '9876543210', 'Unassigned', 'Referral', 'Warm', 'New Lead', 'Active', '2026-08-30', '10:30', 'Replace this sample row with actual buyer details'];
+      const headers = ['Buyer Name', 'Phone', 'Team Member', 'Source', 'Temperature', 'Stage', 'Follow-up Date', 'Follow-up Time', 'Notes'];
+      const sampleRow = ['Sample Buyer', '9876543210', 'Unassigned', 'Referral', '', 'Interested', '2026-08-30', '10:30', 'Replace this sample row with actual buyer details'];
       const worksheet = XLSX.utils.aoa_to_sheet([headers, sampleRow]);
       worksheet['!cols'] = [
         { wch: 24 }, { wch: 16 }, { wch: 22 }, { wch: 18 }, { wch: 14 },
-        { wch: 20 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 48 }
+        { wch: 20 }, { wch: 16 }, { wch: 16 }, { wch: 48 }
       ];
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Buyers');
@@ -3559,9 +3587,9 @@ header {
             phone: phone,
             member: r[2] ? String(r[2]).trim() : 'Unassigned',
             source: r[3] ? String(r[3]).trim() : 'Referral',
-            status: r[4] ? String(r[4]).trim() : 'Warm',
+            status: r[4] ? String(r[4]).trim() : '',
             stage: r[5] ? String(r[5]).trim() : 'New Lead',
-            outcome: hasOutcomeColumn && ['Active', 'On Hold'].includes(String(r[6] || '').trim()) ? String(r[6]).trim() : 'Active',
+            outcome: hasOutcomeColumn && ['Active', 'On Hold', 'Won', 'Failed'].includes(String(r[6] || '').trim()) ? String(r[6]).trim() : 'Active',
             followUpDate: r[hasOutcomeColumn ? 7 : 6] ? String(r[hasOutcomeColumn ? 7 : 6]).trim() : '',
             followUpTime: r[hasOutcomeColumn ? 8 : 7] ? String(r[hasOutcomeColumn ? 8 : 7]).trim() : '',
             notes: r[hasOutcomeColumn ? 9 : 8] ? String(r[hasOutcomeColumn ? 9 : 8]).trim() : '',
