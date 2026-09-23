@@ -1275,7 +1275,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260922-2254</span>
+        <span>Cloud Sync Active ⚡ · Build 260923-0959</span>
       </div>
     </div>
   </header>
@@ -1307,19 +1307,19 @@ header {
     <div class="card" style="padding: 14px 18px; margin-bottom: 16px;">
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; text-align: center;">
         <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
-          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Total Active Leads</div>
+          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Active Buyers</div>
           <div id="kpiTotal" style="font-size: 1.1rem; font-weight: 700; color: var(--primary);">0</div>
         </div>
         <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
-          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">New Leads</div>
+          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">New</div>
           <div id="kpiNew" style="font-size: 1.1rem; font-weight: 700; color: #dc2626;">0</div>
         </div>
         <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
-          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Site Visits Scheduled</div>
+          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Site Visit</div>
           <div id="kpiVisits" style="font-size: 1.1rem; font-weight: 700; color: var(--teal);">0</div>
         </div>
         <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
-          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Booked 🏆</div>
+          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Registered 🏆</div>
           <div id="kpiWon" style="font-size: 1.1rem; font-weight: 700; color: var(--success);">0</div>
         </div>
       </div>
@@ -1361,11 +1361,13 @@ header {
       </div>
 
       <div style="margin-top: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <input type="checkbox" id="hideInactive" checked onchange="renderTable()" style="width: 16px; height: 16px; accent-color: var(--primary);">
-          <label for="hideInactive" style="margin: 0; text-transform: none; cursor: pointer; font-weight: 500;">
-            Hide Not Interested / Not Responding
-          </label>
+        <div style="display: flex; align-items: center; gap: 8px; min-width: 220px;">
+          <label for="buyerStatusFilter" style="margin: 0; text-transform: none; font-weight: 600; white-space: nowrap;">Buyer Status</label>
+          <select id="buyerStatusFilter" onchange="currentPage=1; renderTable()" style="min-width: 125px; padding: 7px 9px;">
+            <option value="ACTIVE" selected>Active</option>
+            <option value="ARCHIVED">Archived</option>
+            <option value="ALL">All</option>
+          </select>
         </div>
         <div style="display: flex; gap: 8px;">
           <button type="button" onclick="toggleAllNotes()" class="btn-small" style="background:#0284c7; color:white;">↔ Expand / Collapse Notes</button>
@@ -1468,6 +1470,11 @@ header {
             <label for="lifecycleStage">Stage</label>
             <select id="lifecycleStage" required></select>
           </div>
+          <div><label for="appointmentDate">Appointment Date</label><input type="date" id="appointmentDate"></div>
+          <div><label for="presentationDate">Presentation Date</label><input type="date" id="presentationDate"></div>
+          <div><label for="siteVisitDate">Site Visit Date</label><input type="date" id="siteVisitDate"></div>
+          <div><label for="closingDate">Closing Date</label><input type="date" id="closingDate"></div>
+          <div><label for="registrationDate">Registration Date</label><input type="date" id="registrationDate"></div>
           <input type="hidden" id="leadOutcome" value="Active">
           <div>
             <label for="followUpDate">Follow up</label>
@@ -1733,6 +1740,7 @@ header {
     // A new key prevents unfinished call sessions from older app files from
     // opening a note window without a current buyer.
     const PENDING_CALL_KEY = 'buyer-crm-pending-call-stages-v2';
+    let pendingCallMemory = null;
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -1947,7 +1955,7 @@ header {
     }
 
     function getDefaultStages() {
-      return ['New Lead', 'Interested', 'Site Visit', 'Negotiation', 'Booked', 'Not Interested', 'Not Responding'];
+      return ['New', 'Appointment', 'Presentation', 'Site Visit', 'Closing', 'Registration'];
     }
 
     function getDefaultTemperatures() { return ['Hot', 'Warm', 'Cold']; }
@@ -1968,12 +1976,16 @@ header {
         ensureBuyerId(b);
         b.name = normalizeBuyerName(b.name);
         b.phone = normalizePhoneForStorage(b.phone);
-        // Simplified stage-only workflow. Preserve old records by mapping legacy stages.
-        if (b.stage === 'Contacted' || b.stage === 'Project Presented' || b.stage === 'Presented') b.stage = 'Interested';
-        if (b.stage === 'Site Visit Scheduled') b.stage = 'Site Visit';
-        if (b.stage === 'Closed / Won' || b.stage === 'Won') b.stage = 'Booked';
-        if (!getDefaultStages().includes(b.stage)) b.stage = 'New Lead';
-        if (!b.outcome) b.outcome = (b.stage === 'Booked' || b.stage === 'Closed / Won') ? 'Won' : (b.stage === 'Not Responding' || b.stage === 'Not Interested' ? 'Failed' : 'Active');
+        // Sales journey v3: stage + milestone dates + reversible archive.
+        const legacyStage = String(b.stage || '').trim();
+        if (legacyStage === 'Contacted' || legacyStage === 'Interested' || legacyStage === 'New Lead') b.stage = 'New';
+        else if (legacyStage === 'Project Presented' || legacyStage === 'Presented') b.stage = 'Presentation';
+        else if (legacyStage === 'Site Visit Scheduled') b.stage = 'Site Visit';
+        else if (legacyStage === 'Negotiation' || legacyStage === 'Closed / Won' || legacyStage === 'Won' || legacyStage === 'Booked') b.stage = 'Closing';
+        else if (legacyStage === 'Not Responding' || legacyStage === 'Not Interested') { b.archived = true; b.archiveReason = b.archiveReason || (legacyStage === 'Not Interested' ? 'Not interested' : 'No response'); b.archivedAtStage = b.archivedAtStage || 'New'; b.stage = b.archivedAtStage; }
+        if (!getDefaultStages().includes(b.stage)) b.stage = 'New';
+        b.archived = b.archived === true;
+        b.outcome = b.archived ? 'Archived' : 'Active';
       });
     }
 
@@ -2047,16 +2059,20 @@ header {
     }
 
     function clearPendingCallSession() {
+      pendingCallMemory = null;
       try { localStorage.removeItem(PENDING_CALL_KEY); } catch (_) {}
+    }
+
+    function isMobileDevice() {
+      return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
     }
 
     function beginBuyerCall(buyerIndex) {
       const buyer = buyers[buyerIndex];
       if (!buyer) return;
-      const timestamp = getShortFormattedTimestamp();
-      buyer.lastContacted = `Call started on ${timestamp}`;
-      savePendingCallSession({ index: buyerIndex, crmId: ensureBuyerId(buyer), name: buyer.name || '', phone: buyer.phone || '', startedAt: Date.now(), leftApp: false, version: 2 });
-      persistData();
+      // Zero-wait call path: do not touch Firebase OR localStorage before the tel: link opens.
+      // Keep the pending call only in memory; visibilitychange stores it after the app has left the screen.
+      pendingCallMemory = { index: buyerIndex, crmId: buyer.crmId || '', name: buyer.name || '', phone: buyer.phone || '', startedAt: Date.now(), leftApp: false, version: 2 };
     }
 
     function openPostCallPanelForIndex(actualIndex) {
@@ -2073,7 +2089,7 @@ header {
       document.getElementById('callNoteBuyerPhone').value = buyer.phone || '';
       document.getElementById('callNoteBuyerNameValue').value = buyer.name || '';
       document.getElementById('callNoteBuyerId').value = ensureBuyerId(buyer);
-      document.getElementById('callNoteBuyer').textContent = `${buyer.name}${buyer.phone ? ' • ' + buyer.phone : ''}`;
+      document.getElementById('callNoteBuyer').textContent = `${buyer.name}${buyer.phone ? ' • ' + formatPhoneForDisplay(buyer.phone) : ''}`;
       document.getElementById('callOutcome').value = 'Connected';
       document.getElementById('callNoteText').value = '';
       document.getElementById('callFollowUpDate').value = buyer.followUpDate || '';
@@ -2094,8 +2110,10 @@ header {
     }
 
     document.addEventListener('visibilitychange', () => {
-      const session = readPendingCallSession();
-      if (document.visibilityState === 'hidden' && session) { session.leftApp = true; savePendingCallSession(session); }
+      if (document.visibilityState === 'hidden') {
+        const session = pendingCallMemory || readPendingCallSession();
+        if (session) { session.leftApp = true; savePendingCallSession(session); }
+      }
       if (document.visibilityState === 'visible') setTimeout(maybeResumePendingCall, 300);
     });
     window.addEventListener('focus', () => setTimeout(maybeResumePendingCall, 450));
@@ -2138,6 +2156,7 @@ header {
         ...buyer,
         notes: buyer.notes ? `${buyer.notes}\n${entry}` : entry,
         lastContacted: `Call on ${timestamp} • ${outcome}`,
+        lastContactedAt: new Date().toISOString(),
         stage: newStage,
         followUpDate: document.getElementById('callFollowUpDate').value,
         followUpTime: document.getElementById('callFollowUpTime').value
@@ -2163,6 +2182,7 @@ header {
       const formattedTimestamp = getShortFormattedTimestamp();
       const actionTag = (type === 'WhatsApp') ? 'WA' : 'Call';
       buyer.lastContacted = `${actionTag} on ${formattedTimestamp}`;
+      buyer.lastContactedAt = new Date().toISOString();
 
       const quickNote = prompt(`Logged ${actionTag} for ${buyer.name} at ${formattedTimestamp}.\nAdd a quick response note (Optional):`);
       if (quickNote && quickNote.trim()) {
@@ -2221,28 +2241,22 @@ header {
       const buyer = buyers[actualIndex];
       if (!buyer || !newStage || buyer.stage === newStage) return;
       const oldStage = buyer.stage || '';
-      if ((newStage === 'Not Responding' || newStage === 'Not Interested') && !confirm(`Move ${buyer.name} to ${newStage}?\n\nThis buyer may disappear from the current list because Hide Inactive is enabled.`)) {
-        renderTable();
-        highlightBuyerRecord(actualIndex);
-        return;
-      }
       const timestamp = getShortFormattedTimestamp();
-      const logEntry = `[${timestamp}]: Stage changed from ${oldStage || 'None'} to ${newStage}`;
-      const updated = {...buyer, stage:newStage, notes:buyer.notes ? `${buyer.notes}\n${logEntry}` : logEntry};
+      const today = getTodayLocalDate();
+      const field = journeyDateForStage(newStage);
+      const updated = {...buyer, stage:newStage, archived:false, outcome:'Active'};
+      if (field && !updated[field]) updated[field] = today;
+      const logEntry = `[${timestamp}]: Stage changed from ${oldStage || 'None'} to ${newStage}${field ? ` (${updated[field]})` : ''}`;
+      updated.notes = buyer.notes ? `${buyer.notes}\n${logEntry}` : logEntry;
       try {
         const ref = db.ref(`teambuyers_crm/buyers/${actualIndex}`);
         await ref.set(updated);
         const saved = (await ref.once('value')).val();
         if (!saved || saved.stage !== newStage) throw new Error('Stage verification failed');
         buyers[actualIndex] = saved;
-        renderTable();
-        highlightBuyerRecord(actualIndex);
-        showCrmToast(`Stage updated: ${newStage}`, () => undoStageChange(actualIndex, oldStage, newStage));
-      } catch(err) {
-        console.error('Stage save failed:', err);
-        renderTable();
-        alert('Stage was not saved. Please check the connection and try again.');
-      }
+        renderTable(); highlightBuyerRecord(actualIndex);
+        showCrmToast(`Stage updated: ${newStage}`);
+      } catch(err) { console.error('Stage save failed:',err); renderTable(); alert('Stage was not saved. Please check the connection and try again.'); }
     }
 
     async function undoStageChange(actualIndex, oldStage, changedStage) {
@@ -2692,6 +2706,7 @@ header {
       document.getElementById('assignedMember').value = buyer.member || '';
       document.getElementById('leadSource').value = buyer.source || '';
       document.getElementById('lifecycleStage').value = buyer.stage || '';
+      ['appointmentDate','presentationDate','siteVisitDate','closingDate','registrationDate'].forEach(id => { const el=document.getElementById(id); if(el) el.value=buyer[id]||''; });
       document.getElementById('leadOutcome').value = ['Active', 'On Hold', 'Won', 'Failed'].includes(buyer.outcome) ? buyer.outcome : 'Active';
       document.getElementById('followUpDate').value = buyer.followUpDate || '';
       document.getElementById('followUpTime').value = buyer.followUpTime || '';
@@ -2792,12 +2807,22 @@ header {
         source: document.getElementById('leadSource').value,
         status: existingRecord.status || '',
         stage: document.getElementById('lifecycleStage').value,
+        appointmentDate: document.getElementById('appointmentDate').value,
+        presentationDate: document.getElementById('presentationDate').value,
+        siteVisitDate: document.getElementById('siteVisitDate').value,
+        closingDate: document.getElementById('closingDate').value,
+        registrationDate: document.getElementById('registrationDate').value,
+        archived: existingRecord.archived === true,
+        archiveReason: existingRecord.archiveReason || '',
+        archivedAtStage: existingRecord.archivedAtStage || '',
+        archivedAt: existingRecord.archivedAt || '',
         // Keep historical outcome data without exposing a second workflow.
         outcome: existingRecord.outcome || 'Active',
         followUpDate: document.getElementById('followUpDate').value,
         followUpTime: document.getElementById('followUpTime').value,
         notes: document.getElementById('buyerNotes').value.trim(),
-        lastContacted: existingRecord.lastContacted || ''
+        lastContacted: existingRecord.lastContacted || '',
+        lastContactedAt: index >= 0 ? new Date().toISOString() : (existingRecord.lastContactedAt || '')
       };
 
       if (index >= 0) {
@@ -2809,6 +2834,7 @@ header {
       persistData();
       document.getElementById('searchKeyword').value = '';
       if (index >= 0) {
+        currentPage = 1;
         resetBuyerForm();
         switchTab('tab-directory');
       } else {
@@ -2864,7 +2890,7 @@ header {
       document.getElementById('searchNotes').value = '';
       document.getElementById('fromDate').value = '';
       document.getElementById('toDate').value = '';
-      document.getElementById('hideInactive').checked = true;
+      document.getElementById('buyerStatusFilter').value = 'ACTIVE';
       currentPage = 1;
       renderTable();
       if (focusSearch) {
@@ -2885,17 +2911,12 @@ header {
       const searchNotes = document.getElementById('searchNotes').value.toLowerCase().trim();
       const fromDate = document.getElementById('fromDate').value;
       const toDate = document.getElementById('toDate').value;
-      const hideInactive = document.getElementById('hideInactive').checked;
+      const buyerStatusFilter = document.getElementById('buyerStatusFilter').value;
 
       const filtered = buyers.map((b, idx) => ({ ...b, originalIndex: idx })).filter(b => {
-        // Hide inactive buyers whenever the checkbox is ON, including during
-        // universal/name/phone/notes searches. An explicit Stage filter remains
-        // the intentional way to retrieve Not Interested / Not Responding records.
-        const normalizedStage = String(b.stage || '').trim().toLowerCase();
-        if (hideInactive && stageFilter === 'ALL' && (
-          normalizedStage === 'not responding' ||
-          normalizedStage === 'not interested'
-        )) return false;
+        // Archived buyers stay in the database and can be restored for future projects.
+        if (buyerStatusFilter === 'ACTIVE' && b.archived === true) return false;
+        if (buyerStatusFilter === 'ARCHIVED' && b.archived !== true) return false;
         if (agentFilter === '__UNASSIGNED__') {
           if (String(b.member || '').trim()) return false;
         } else if (agentFilter !== 'ALL' && b.member !== agentFilter) return false;
@@ -2923,9 +2944,19 @@ header {
           return 0;
         });
       } else {
-        // Default directory view: newest-added buyer first.
-        // originalIndex reflects insertion order in the existing buyers array.
-        filtered.sort((a, b) => b.originalIndex - a.originalIndex);
+        // Working call queue: prospects not yet handled stay at the top.
+        // Once a record is saved/updated after contact, lastContactedAt is stamped and
+        // that prospect moves below untouched prospects. Among handled prospects,
+        // the least recently contacted comes first. Untouched records retain newest-first order.
+        filtered.sort((a, b) => {
+          const aAt = String(a.lastContactedAt || '');
+          const bAt = String(b.lastContactedAt || '');
+          if (!aAt && bAt) return -1;
+          if (aAt && !bAt) return 1;
+          if (!aAt && !bAt) return b.originalIndex - a.originalIndex;
+          const cmp = aAt.localeCompare(bAt);
+          return cmp !== 0 ? cmp : (b.originalIndex - a.originalIndex);
+        });
       }
       return filtered;
     }
@@ -3038,6 +3069,7 @@ header {
       const source = document.getElementById('filterSource')?.value || 'ALL';
       const stage = document.getElementById('filterStage')?.value || 'ALL';
       const outcome = document.getElementById('filterOutcome')?.value || 'ALL';
+      const buyerStatus = document.getElementById('buyerStatusFilter')?.value || 'ACTIVE';
       const notes = (document.getElementById('searchNotes')?.value || '').trim();
       const fromDate = document.getElementById('fromDate')?.value || '';
       const toDate = document.getElementById('toDate')?.value || '';
@@ -3058,6 +3090,7 @@ header {
       const source = document.getElementById('filterSource')?.value || 'ALL';
       const stage = document.getElementById('filterStage')?.value || 'ALL';
       const outcome = document.getElementById('filterOutcome')?.value || 'ALL';
+      const buyerStatus = document.getElementById('buyerStatusFilter')?.value || 'ACTIVE';
       const notes = (document.getElementById('searchNotes')?.value || '').trim();
       const fromDate = document.getElementById('fromDate')?.value || '';
       const toDate = document.getElementById('toDate')?.value || '';
@@ -3066,6 +3099,7 @@ header {
       if (source !== 'ALL') parts.push(source);
       if (stage !== 'ALL') parts.push(stage);
       if (outcome !== 'ALL') parts.push(outcome);
+      parts.push(`Status: ${buyerStatus === 'ARCHIVED' ? 'Archived' : buyerStatus === 'ALL' ? 'All' : 'Active'}`);
       if (notes) parts.push(`Notes: ${notes}`);
       if (fromDate || toDate) parts.push(`${fromDate || 'Any'} to ${toDate || 'Any'}`);
       return [...new Set(parts)].join(' | ');
@@ -3077,6 +3111,7 @@ header {
       const source = document.getElementById('filterSource')?.value || 'ALL';
       const stage = document.getElementById('filterStage')?.value || 'ALL';
       const outcome = document.getElementById('filterOutcome')?.value || 'ALL';
+      const buyerStatus = document.getElementById('buyerStatusFilter')?.value || 'ACTIVE';
       if (member === '__UNASSIGNED__') parts.push('Unassigned');
       else if (member !== 'ALL') parts.push((member.split(/\s+/)[0] || member));
       else {
@@ -3088,6 +3123,11 @@ header {
       if (source !== 'ALL') parts.push(source);
       if (stage !== 'ALL') parts.push(stage);
       if (outcome !== 'ALL') parts.push(outcome);
+      if (buyerStatus === 'ARCHIVED') {
+        if (parts.length === 1 && parts[0] === 'All') parts[0] = 'Archived'; else parts.push('Archived');
+      } else if (buyerStatus === 'ACTIVE') {
+        if (parts.length === 1 && parts[0] === 'All') parts[0] = 'Active'; else parts.push('Active');
+      }
       return parts.map(safeFilenamePart).filter(Boolean).join('_') || 'All';
     }
 
@@ -3331,7 +3371,7 @@ header {
     let lastSelectionFilterSignature = null;
 
     function getSelectionFilterSignature() {
-      const ids = ['filterAgent','filterSource','filterStage','filterOutcome','searchKeyword','searchNotes','fromDate','toDate','hideInactive'];
+      const ids = ['filterAgent','filterSource','filterStage','filterOutcome','searchKeyword','searchNotes','fromDate','toDate','buyerStatusFilter'];
       return ids.map(id => {
         const el = document.getElementById(id);
         return el?.type === 'checkbox' ? (el.checked ? '1' : '0') : (el?.value || '');
@@ -3388,9 +3428,9 @@ header {
       }
 
       document.getElementById('kpiTotal').innerText = filtered.length;
-      document.getElementById('kpiNew').innerText = filtered.filter(b => b.stage === 'New Lead').length;
-      document.getElementById('kpiVisits').innerText = filtered.filter(b => b.stage === 'Site Visit' || b.stage === 'Site Visit Scheduled').length;
-      document.getElementById('kpiWon').innerText = filtered.filter(b => b.stage === 'Booked' || b.stage === 'Closed / Won').length;
+      document.getElementById('kpiNew').innerText = filtered.filter(b => b.stage === 'New' && !b.archived).length;
+      document.getElementById('kpiVisits').innerText = filtered.filter(b => b.stage === 'Site Visit' && !b.archived).length;
+      document.getElementById('kpiWon').innerText = filtered.filter(b => b.stage === 'Registration' && !b.archived).length;
 
       tbody.innerHTML = pageSlice.map(b => {
         const actualIndex = b.originalIndex;
@@ -3406,10 +3446,10 @@ header {
             
             <td data-label="Phone & Connect" style="white-space: nowrap;">
               ${b.phone ? `
-                <a href="tel:${b.phone}" onclick="beginBuyerCall(${actualIndex})" title="Call Buyer" style="text-decoration:none; margin-right:4px; font-size:15px;">📞</a>
+                <a href="tel:${cleanPhone}" onclick="if (!isMobileDevice()) { event.preventDefault(); openPostCallPanelForIndex(${actualIndex}); } else { beginBuyerCall(${actualIndex}); }" title="Call Buyer" style="text-decoration:none; margin-right:4px; font-size:15px;">📞</a>
                 <a href="https://wa.me/${whatsappNumber(b.phone, b.phoneInternational === true)}" target="_blank" onclick="logContactAction(${actualIndex}, 'WhatsApp')" title="WhatsApp Chat" style="text-decoration:none; margin-right:6px; font-size:15px;">💬</a>
                 <button type="button" onclick="openPostCallPanelForIndex(${actualIndex})" title="Add call note" style="width:auto; padding:3px 6px; margin-right:5px; background:#eef2ff; color:#303c91;">📝</button>
-                <a href="tel:${cleanPhone}" onclick="beginBuyerCall(${actualIndex})" title="Call ${b.name}" style="font-size:0.8rem;text-decoration:none;color:inherit;font-weight:600;">${formatPhoneForDisplay(b.phone)}</a>
+                <a href="tel:${cleanPhone}" onclick="if (!isMobileDevice()) { event.preventDefault(); openPostCallPanelForIndex(${actualIndex}); } else { beginBuyerCall(${actualIndex}); }" title="Call ${b.name}" style="font-size:0.8rem;text-decoration:none;color:inherit;font-weight:600;">${formatPhoneForDisplay(b.phone)}</a>
               ` : '-'}
             </td>
 
@@ -3426,6 +3466,7 @@ header {
             
             <td data-label="Notes" style="max-width: 240px;">
               <div id="note-${actualIndex}" class="expandable-notes ${allNotesExpanded ? 'active' : ''}" style="margin-bottom:4px;">${b.notes || 'No notes'}</div>
+              ${b.registrationDate && journeyDays(b) !== '' ? `<div class="hint" style="margin:2px 0 5px;color:#047857;font-weight:700;">Journey: ${journeyDays(b)} days</div>` : ''}
               <div style="display: flex; gap: 4px;">
                 <input type="text" id="quick-note-input-${actualIndex}" placeholder="Type update..." style="font-size: 10px; flex: 1; padding: 2px 4px; height: 22px;">
                 <button type="button" onclick="appendQuickNote(${actualIndex})" style="font-size: 10px; padding: 2px 6px; width: auto; height: 22px; background:var(--primary); color:white;">+ Add</button>
@@ -3434,6 +3475,7 @@ header {
 
             <td data-label="Actions" style="white-space: nowrap;">
               <button type="button" class="btn-edit buyer-icon-action" onclick="editBuyer(${actualIndex})" title="Edit buyer" aria-label="Edit buyer ${b.name}">✏️</button>
+              <button type="button" class="buyer-icon-action" onclick="${b.archived ? `restoreBuyer(${actualIndex})` : `archiveBuyer(${actualIndex})`}" title="${b.archived ? 'Restore buyer' : 'Archive buyer'}" aria-label="${b.archived ? 'Restore' : 'Archive'} buyer ${b.name}" style="background:${b.archived ? '#059669' : '#f59e0b'};color:white;">${b.archived ? '♻️' : '📦'}</button>
               <button type="button" class="btn-danger buyer-icon-action" onclick="deleteBuyer(${actualIndex})" title="Delete buyer" aria-label="Delete buyer ${b.name}">🗑️</button>
             </td>
           </tr>
@@ -3588,7 +3630,7 @@ header {
             member: r[2] ? String(r[2]).trim() : 'Unassigned',
             source: r[3] ? String(r[3]).trim() : 'Referral',
             status: r[4] ? String(r[4]).trim() : '',
-            stage: r[5] ? String(r[5]).trim() : 'New Lead',
+            stage: r[5] ? String(r[5]).trim() : 'New',
             outcome: hasOutcomeColumn && ['Active', 'On Hold', 'Won', 'Failed'].includes(String(r[6] || '').trim()) ? String(r[6]).trim() : 'Active',
             followUpDate: r[hasOutcomeColumn ? 7 : 6] ? String(r[hasOutcomeColumn ? 7 : 6]).trim() : '',
             followUpTime: r[hasOutcomeColumn ? 8 : 7] ? String(r[hasOutcomeColumn ? 8 : 7]).trim() : '',
@@ -3605,6 +3647,37 @@ header {
         switchTab('tab-directory');
       };
       reader.readAsArrayBuffer(file);
+    }
+
+
+    // === SALES JOURNEY V3 — 260923-0933 ===
+    const JOURNEY_DATE_FIELD = { Appointment:'appointmentDate', Presentation:'presentationDate', 'Site Visit':'siteVisitDate', Closing:'closingDate', Registration:'registrationDate' };
+    function journeyDateForStage(stage){ return JOURNEY_DATE_FIELD[stage] || ''; }
+    function journeyDays(b){
+      const start=b.firstContactDate || b.createdDate || '';
+      const end=b.registrationDate || '';
+      if(!start || !end) return '';
+      const a=new Date(start+'T00:00:00'), z=new Date(end+'T00:00:00');
+      if(Number.isNaN(a.getTime())||Number.isNaN(z.getTime())) return '';
+      return Math.max(0,Math.round((z-a)/86400000));
+    }
+    async function archiveBuyer(index){
+      const b=buyers[index]; if(!b) return;
+      const reason=prompt('Archive reason (optional): Finance / Not interested / Postponed / Project mismatch / No response / Other', b.archiveReason||'');
+      if(reason===null) return;
+      const updated={...b, archived:true, archiveReason:reason.trim(), archivedAtStage:b.stage||'New', archivedAt:new Date().toISOString(), outcome:'Archived'};
+      const log=`[${getShortFormattedTimestamp()}]: Archived after ${updated.archivedAtStage}${updated.archiveReason?' — '+updated.archiveReason:''}`;
+      updated.notes=updated.notes?`${updated.notes}\n${log}`:log;
+      try{ await db.ref(`teambuyers_crm/buyers/${index}`).set(updated); buyers[index]=updated; renderTable(); showCrmToast(`${b.name} archived`); }
+      catch(err){ console.error(err); alert('Archive was not saved. Please check the connection.'); }
+    }
+    async function restoreBuyer(index){
+      const b=buyers[index]; if(!b) return;
+      const updated={...b, archived:false, restoredAt:new Date().toISOString(), outcome:'Active'};
+      const log=`[${getShortFormattedTimestamp()}]: Restored from archive (previously reached ${b.archivedAtStage||b.stage||'New'})`;
+      updated.notes=updated.notes?`${updated.notes}\n${log}`:log;
+      try{ await db.ref(`teambuyers_crm/buyers/${index}`).set(updated); buyers[index]=updated; renderTable(); showCrmToast(`${b.name} restored`); }
+      catch(err){ console.error(err); alert('Restore was not saved. Please check the connection.'); }
     }
 
     // PWA installation and offline app-shell support.
