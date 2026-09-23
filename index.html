@@ -1266,6 +1266,26 @@ header {
   #tab-directory .outcome-compact-select { max-width: 150px; }
   #tab-directory td[data-label="Phone & Connect"] { white-space: nowrap !important; overflow: visible !important; }
 }
+
+/* Mobile search-first directory: keep results close to universal search. */
+.mobile-filters-details { display:contents; }
+.mobile-filters-toggle { display:none; }
+@media screen and (max-width: 600px) {
+  #tab-directory > .card:first-child { display:none !important; }
+  #tab-directory > .card:nth-of-type(2) { padding:12px !important; margin-bottom:8px !important; }
+  #tab-directory > .card:nth-of-type(2) > h3 { display:none; }
+  #tab-directory .buyer-search-hero { position:static !important; margin:0 0 8px !important; padding:10px !important; }
+  #tab-directory .buyer-search-help { display:none; }
+  .mobile-filters-details { display:block; }
+  .mobile-filters-toggle { display:block; width:100%; min-height:40px; margin:0; padding:8px 12px; border-radius:10px; background:#eef2ff; color:#303c91; border:1px solid #c7d2fe; font-weight:800; cursor:pointer; list-style:none; }
+  .mobile-filters-toggle::-webkit-details-marker { display:none; }
+  .mobile-filters-details:not([open]) > :not(summary) { display:none !important; }
+  .mobile-filters-details:not([open]) .mobile-secondary-filters { display:none !important; }
+  .mobile-filters-details[open] .mobile-secondary-filters { display:block !important; padding-top:10px; }
+  .mobile-filters-details[open] .mobile-filters-toggle::after { content:" — Hide"; }
+  #tab-directory > .card:nth-of-type(3) { margin-top:0 !important; }
+  #tab-directory #buyerTableBody tr { scroll-margin-top: 8px; }
+}
 </style>
 </head>
 <body>
@@ -1275,14 +1295,14 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260923-0959</span>
+        <span>Cloud Sync Active ⚡ · Build 260923-1204</span>
       </div>
     </div>
   </header>
 
   <!-- TAB NAVIGATION -->
   <nav class="tab-nav">
-    <button type="button" class="tab-btn active" onclick="switchTab('tab-directory')">
+    <button type="button" class="tab-btn active" onclick="switchTab('tab-directory'); enforceMobileFiltersDefaultClosed();">
       <span class="icon">📊</span>
       <span>Directory</span>
     </button>
@@ -1330,9 +1350,12 @@ header {
       <h3>🔍 Buyer Directory & Quick Filters</h3>
       <div class="buyer-search-hero">
         <label for="searchKeyword">🔎 BUYER / PHONE / NOTES</label>
-        <input type="search" id="searchKeyword" enterkeyhint="search" autocomplete="off" placeholder="Search buyer name, phone or notes • Enter clears all filters" oninput="currentPage=1; renderTable()" onkeydown="return handleBuyerSearchKeydown(event)">
+        <input type="search" id="searchKeyword" enterkeyhint="search" autocomplete="off" placeholder="Search buyer name, phone or notes • Enter clears all filters" oninput="handleDirectorySearchInput()" onkeydown="return handleBuyerSearchKeydown(event)">
         <div class="buyer-search-help">Universal search across Buyer Name, Phone and Notes. Press Enter to clear every filter and continue typing here.</div>
       </div>
+      <details id="mobileFiltersDetails" class="mobile-filters-details">
+        <summary class="mobile-filters-toggle">⚙ Filters</summary>
+      <div id="mobileSecondaryFilters" class="mobile-secondary-filters">
       <div class="grid">
         <div>
           <label for="filterAgent">Team Member</label>
@@ -1374,9 +1397,11 @@ header {
           <button type="button" onclick="resetFilters()" class="btn-small" style="background: #475569; color: white;">Reset All Filters</button>
         </div>
       </div>
+      </div>
+      </details>
     </div>
 
-    <div class="card">
+    <div class="card" id="buyerResultsCard">
       <div class="selection-toolbar">
         <div>
           <strong id="selectedCount">0 records selected</strong>
@@ -2882,6 +2907,37 @@ header {
       renderTable();
     }
 
+    function toggleMobileDirectoryFilters(forceOpen) {
+      const details = document.getElementById('mobileFiltersDetails');
+      if (!details) return;
+      const open = typeof forceOpen === 'boolean' ? forceOpen : !details.open;
+      details.open = open;
+    }
+
+    let mobileSearchScrollTimer = null;
+
+    function handleDirectorySearchInput() {
+      currentPage = 1;
+      renderTable();
+
+      const search = document.getElementById('searchKeyword');
+      const query = String(search?.value || '').trim();
+      const isMobile = window.matchMedia && window.matchMedia('(max-width: 600px)').matches;
+      if (!isMobile || !query) return;
+
+      // Search on Android is a direct jump to results: close secondary filters first,
+      // then bring the first matching buyer card/row into view after the DOM repaint.
+      toggleMobileDirectoryFilters(false);
+      if (mobileSearchScrollTimer) clearTimeout(mobileSearchScrollTimer);
+      mobileSearchScrollTimer = setTimeout(() => {
+        requestAnimationFrame(() => {
+          const firstResult = document.querySelector('#buyerTableBody tr');
+          if (!firstResult) return;
+          firstResult.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+        });
+      }, 120);
+    }
+
     function resetFilters(focusSearch = false) {
       document.getElementById('filterAgent').value = 'ALL';
       document.getElementById('filterSource').value = 'ALL';
@@ -2891,6 +2947,7 @@ header {
       document.getElementById('fromDate').value = '';
       document.getElementById('toDate').value = '';
       document.getElementById('buyerStatusFilter').value = 'ACTIVE';
+      if (window.matchMedia && window.matchMedia('(max-width: 600px)').matches) toggleMobileDirectoryFilters(false);
       currentPage = 1;
       renderTable();
       if (focusSearch) {
@@ -3735,6 +3792,16 @@ header {
     if (buyerTableBody) buyerTableBody.addEventListener('click', handleOutcomeActionClick);
 
     updatePwaInstallUi();
-  </script>
+  
+    // Android/mobile Directory default: secondary filters are always collapsed
+    // on a fresh load and when returning to Directory. Desktop remains unchanged.
+    function enforceMobileFiltersDefaultClosed() {
+      if (window.matchMedia && window.matchMedia('(max-width: 600px)').matches) {
+        const details = document.getElementById('mobileFiltersDetails');
+        if (details) details.open = false;
+      }
+    }
+    document.addEventListener('DOMContentLoaded', enforceMobileFiltersDefaultClosed);
+</script>
 </body>
 </html>
