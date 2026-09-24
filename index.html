@@ -1286,6 +1286,96 @@ header {
   #tab-directory > .card:nth-of-type(3) { margin-top:0 !important; }
   #tab-directory #buyerTableBody tr { scroll-margin-top: 8px; }
 }
+
+/* === ANDROID TABLET RESPONSIVE FIX — 260923-2104 ===
+   Tablet only (601–900px): expose collapsible filters and keep row actions compact.
+   Existing phone <=600px and Windows >=901px rules remain unchanged. */
+@media screen and (min-width: 601px) and (max-width: 900px) {
+  /* The <details> was closed while its summary was hidden at tablet widths,
+     which made the entire filter body disappear. */
+  #tab-directory .mobile-filters-details {
+    display: block !important;
+  }
+  #tab-directory .mobile-filters-toggle {
+    display: block !important;
+    width: 100%;
+    min-height: 42px;
+    margin: 0;
+    padding: 9px 12px;
+    border-radius: 10px;
+    background: #eef2ff;
+    color: #303c91;
+    border: 1px solid #c7d2fe;
+    font-weight: 800;
+    cursor: pointer;
+    list-style: none;
+  }
+  #tab-directory .mobile-filters-toggle::-webkit-details-marker {
+    display: none;
+  }
+  #tab-directory .mobile-filters-details:not([open]) > :not(summary) {
+    display: none !important;
+  }
+  #tab-directory .mobile-filters-details[open] .mobile-secondary-filters {
+    display: block !important;
+    padding-top: 10px;
+  }
+  #tab-directory .mobile-filters-details[open] .mobile-filters-toggle::after {
+    content: " — Hide";
+  }
+
+  /* Compact Edit / Archive / Delete controls on tablet. */
+  #tab-directory .table-responsive td[data-label="Actions"] {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+  #tab-directory .table-responsive td[data-label="Actions"]::before {
+    margin-right: auto;
+  }
+  #tab-directory .buyer-icon-action {
+    flex: 0 0 46px !important;
+    width: 46px !important;
+    min-width: 46px !important;
+    max-width: 46px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 9px !important;
+    font-size: 16px !important;
+  }
+}
+
+
+/* === CROSS-DEVICE FILTER TOGGLE FIX — 260924-0802 ===
+   Windows >=901px now uses the same safe <details> toggle pattern as Android/tablet.
+   Closed by default; one click exposes filters. Phone/tablet rules remain unchanged. */
+@media screen and (min-width: 901px) {
+  #tab-directory .mobile-filters-details {
+    display: block !important;
+  }
+  #tab-directory .mobile-filters-toggle {
+    display: block !important;
+    width: 100%;
+    min-height: 42px;
+    margin: 0;
+    padding: 9px 12px;
+    border-radius: 10px;
+    background: #eef2ff;
+    color: #303c91;
+    border: 1px solid #c7d2fe;
+    font-weight: 800;
+    cursor: pointer;
+    list-style: none;
+  }
+  #tab-directory .mobile-filters-toggle::-webkit-details-marker { display: none; }
+  #tab-directory .mobile-filters-details:not([open]) > :not(summary) { display: none !important; }
+  #tab-directory .mobile-filters-details[open] .mobile-secondary-filters { display: block !important; padding-top: 10px; }
+  #tab-directory .mobile-filters-details[open] .mobile-filters-toggle::after { content: " — Hide"; }
+}
+
 </style>
 </head>
 <body>
@@ -1295,7 +1385,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260923-1204</span>
+        <span>Cloud Sync Active ⚡ · Build 260924-0802</span>
       </div>
     </div>
   </header>
@@ -2922,7 +3012,7 @@ header {
 
       const search = document.getElementById('searchKeyword');
       const query = String(search?.value || '').trim();
-      const isMobile = window.matchMedia && window.matchMedia('(max-width: 600px)').matches;
+      const isMobile = window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
       if (!isMobile || !query) return;
 
       // Search on Android is a direct jump to results: close secondary filters first,
@@ -2947,7 +3037,7 @@ header {
       document.getElementById('fromDate').value = '';
       document.getElementById('toDate').value = '';
       document.getElementById('buyerStatusFilter').value = 'ACTIVE';
-      if (window.matchMedia && window.matchMedia('(max-width: 600px)').matches) toggleMobileDirectoryFilters(false);
+      if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) toggleMobileDirectoryFilters(false);
       currentPage = 1;
       renderTable();
       if (focusSearch) {
@@ -3796,7 +3886,7 @@ header {
     // Android/mobile Directory default: secondary filters are always collapsed
     // on a fresh load and when returning to Directory. Desktop remains unchanged.
     function enforceMobileFiltersDefaultClosed() {
-      if (window.matchMedia && window.matchMedia('(max-width: 600px)').matches) {
+      if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) {
         const details = document.getElementById('mobileFiltersDetails');
         if (details) details.open = false;
       }
