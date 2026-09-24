@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Prospective Buyer Tracker & CRM</title>
+  <!-- FIX BUILD 260924-1341: preserve directory filters + saved outcomes -->
   <meta name="description" content="Prospective buyer tracking, follow-ups, team assignment and reporting for Team SR Nair.">
   <meta name="theme-color" content="#6D28D9">
   <meta name="mobile-web-app-capable" content="yes">
@@ -1376,6 +1377,34 @@ header {
   #tab-directory .mobile-filters-details[open] .mobile-filters-toggle::after { content: " — Hide"; }
 }
 
+
+/* === CALL / OUTCOME MODAL SCOPE FIX — 260924-1357 ===
+   Earlier modal base CSS was accidentally nested inside the phone media rule.
+   Keep both dialogs true fixed overlays on Windows, tablet and phone. */
+.call-note-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  background: rgba(15,23,42,.58);
+  padding: 12px;
+  overflow: auto;
+  align-items: flex-start;
+  justify-content: center;
+}
+.call-note-backdrop.active { display: flex !important; }
+.call-note-panel {
+  width: min(720px, 100%);
+  margin: 40px auto;
+  background: #fff;
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 24px 70px rgba(15,23,42,.35);
+}
+@media screen and (max-width: 600px) {
+  .call-note-panel { width: 100%; margin: 2vh auto; padding: 18px; }
+}
+
 </style>
 </head>
 <body>
@@ -1385,7 +1414,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260924-0802</span>
+        <span>Cloud Sync Active ⚡ · Build 260924-1357</span>
       </div>
     </div>
   </header>
@@ -2100,7 +2129,10 @@ header {
         else if (legacyStage === 'Not Responding' || legacyStage === 'Not Interested') { b.archived = true; b.archiveReason = b.archiveReason || (legacyStage === 'Not Interested' ? 'Not interested' : 'No response'); b.archivedAtStage = b.archivedAtStage || 'New'; b.stage = b.archivedAtStage; }
         if (!getDefaultStages().includes(b.stage)) b.stage = 'New';
         b.archived = b.archived === true;
-        b.outcome = b.archived ? 'Archived' : 'Active';
+        // Preserve the saved operational outcome. Realtime refresh must not turn
+        // On Hold / Won / Failed back into Active. Archived remains authoritative.
+        const savedOutcome = String(b.outcome || 'Active').trim();
+        b.outcome = b.archived ? 'Archived' : (['Active', 'On Hold', 'Won', 'Failed'].includes(savedOutcome) ? savedOutcome : 'Active');
       });
     }
 
@@ -2439,7 +2471,7 @@ header {
 
       if (el.outcomeBackdrop.parentElement !== document.body) document.body.appendChild(el.outcomeBackdrop);
       el.outcomeBackdrop.classList.add('active');
-      el.outcomeBackdrop.style.display = 'block';
+      el.outcomeBackdrop.style.display = '';
       requestAnimationFrame(() => {
         const firstField = mode === 'Won' ? el.wonProjectName : el.failureReasonSelect;
         try { firstField.focus({ preventScroll: true }); } catch (_) { firstField.focus(); }
@@ -2455,8 +2487,38 @@ header {
       returnToBuyerSearch();
     }
     async function saveOutcomeDialog(){
-      const i=resolveDialogBuyerIndex(document.getElementById('outcomeBuyerIndex').value,document.getElementById('outcomeBuyerPhone').value,document.getElementById('outcomeBuyerId').value,document.getElementById('outcomeBuyerNameValue').value,activeOutcomeBuyerRef),mode=document.getElementById('outcomeMode').value,buyer=buyers[i];
-      if(!buyer){returnToBuyerSearch();return alert('The selected buyer could not be matched. Please open the outcome again.')}
+      // Resolve from the immutable values captured when the Outcome window opened.
+      // Firebase can replace the local buyers[] objects while this dialog is open, so
+      // never depend only on the old object reference or the visible filtered row.
+      const indexValue = document.getElementById('outcomeBuyerIndex').value;
+      const phoneValue = document.getElementById('outcomeBuyerPhone').value;
+      const idValue = document.getElementById('outcomeBuyerId').value;
+      const nameValue = document.getElementById('outcomeBuyerNameValue').value;
+      const mode = document.getElementById('outcomeMode').value;
+      let i = resolveDialogBuyerIndex(indexValue, phoneValue, idValue, nameValue, activeOutcomeBuyerRef);
+
+      // If realtime sync refreshed/replaced the array while the dialog was open,
+      // reload the current Firebase buyers and resolve the same buyer again.
+      if (i < 0 || !buyers[i]) {
+        try {
+          const snapshot = await db.ref('teambuyers_crm/buyers').once('value');
+          const latestBuyers = snapshot.val();
+          if (Array.isArray(latestBuyers)) {
+            buyers = latestBuyers;
+            normalizeCrmMastersAndBuyers();
+            i = resolveDialogBuyerIndex(indexValue, phoneValue, idValue, nameValue);
+          }
+        } catch (err) {
+          console.error('Could not refresh buyers for outcome save:', err);
+        }
+      }
+
+      const buyer = buyers[i];
+      if(!buyer){
+        // Keep the dialog and entered details open. Do not throw the user back to
+        // another buyer/filter merely because a realtime refresh happened.
+        return alert('The buyer record refreshed while this window was open. Please tap Save Outcome once more.');
+      }
       const oldOutcome=(activeOutcomePreviousOutcome !== null ? activeOutcomePreviousOutcome : (buyer.outcome||'Active')),oldDetails={wonProjectName:buyer.wonProjectName,wonPlotNumber:buyer.wonPlotNumber,wonAt:buyer.wonAt,failedAtStage:buyer.failedAtStage,failureReason:buyer.failureReason,failedAt:buyer.failedAt,followUpDate:buyer.followUpDate},timestamp=getShortFormattedTimestamp();let log='';
       if(mode==='Won'){
         const project=document.getElementById('wonProjectName').value.trim(),plot=document.getElementById('wonPlotNumber').value.trim(),remarks=document.getElementById('wonRemarks').value.trim();
@@ -2533,7 +2595,13 @@ header {
         filterAgent.innerHTML = `<option value="ALL">All Team Members</option><option value="__UNASSIGNED__">⚠ Unassigned (${unassignedCount})</option>` + teamMembers.map(m => `<option value="${m.name}">${m.name}</option>`).join('');
         if ([...filterAgent.options].some(o => o.value === previousAgentFilter)) filterAgent.value = previousAgentFilter;
       }
-      if (filterSource) filterSource.innerHTML = '<option value="ALL">All Sources</option>' + sourceOptions;
+      if (filterSource) {
+        // Keep the user's current Lead Source filter through Firebase realtime refreshes.
+        // Previously every save rebuilt this dropdown and silently reset it to ALL.
+        const previousSourceFilter = filterSource.value || 'ALL';
+        filterSource.innerHTML = '<option value="ALL">All Sources</option>' + sourceOptions;
+        if ([...filterSource.options].some(o => o.value === previousSourceFilter)) filterSource.value = previousSourceFilter;
+      }
       if (filterStage) {
         const selectedStageFilter = filterStage.value || 'ALL';
         filterStage.innerHTML = '<option value="ALL">All Stages</option>' + stageOptions;
