@@ -1414,7 +1414,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260924-1357</span>
+        <span>Cloud Sync Active ⚡ · Build 260925-1357</span>
       </div>
     </div>
   </header>
@@ -3159,16 +3159,32 @@ header {
           return 0;
         });
       } else {
-        // Working call queue: prospects not yet handled stay at the top.
-        // Once a record is saved/updated after contact, lastContactedAt is stamped and
-        // that prospect moves below untouched prospects. Among handled prospects,
-        // the least recently contacted comes first. Untouched records retain newest-first order.
+        // Keep untouched buyers ahead of contacted buyers. Rotate the untouched
+        // queue across team/source batches, retaining newest-first within each batch.
+        // This prevents one large import from occupying every opening page.
+        const untouchedGroups = new Map();
+        for (const buyer of filtered) {
+          if (buyer.lastContactedAt) continue;
+          const key = `${String(buyer.member || '').trim().toLowerCase()}\u0000${String(buyer.source || '').trim().toLowerCase()}`;
+          if (!untouchedGroups.has(key)) untouchedGroups.set(key, []);
+          untouchedGroups.get(key).push(buyer);
+        }
+        const groups = [...untouchedGroups.values()];
+        for (const group of groups) group.sort((a, b) => b.originalIndex - a.originalIndex);
+        groups.sort((a, b) => b[0].originalIndex - a[0].originalIndex);
+        const queueRank = new Map();
+        let position = 0;
+        for (let row = 0; groups.some(group => row < group.length); row++) {
+          for (const group of groups) {
+            if (row < group.length) queueRank.set(group[row].originalIndex, position++);
+          }
+        }
         filtered.sort((a, b) => {
           const aAt = String(a.lastContactedAt || '');
           const bAt = String(b.lastContactedAt || '');
           if (!aAt && bAt) return -1;
           if (aAt && !bAt) return 1;
-          if (!aAt && !bAt) return b.originalIndex - a.originalIndex;
+          if (!aAt && !bAt) return queueRank.get(a.originalIndex) - queueRank.get(b.originalIndex);
           const cmp = aAt.localeCompare(bAt);
           return cmp !== 0 ? cmp : (b.originalIndex - a.originalIndex);
         });
