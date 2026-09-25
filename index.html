@@ -1414,7 +1414,7 @@ header {
       <img class="header-logo" src="./icon-192.png" alt="Buyer CRM logo">
       <div class="header-copy">
         <h2>Buyer Tracker CRM</h2>
-        <span>Cloud Sync Active ⚡ · Build 260925-1357</span>
+        <span>Cloud Sync Active ⚡ · Build 260925-1409</span>
       </div>
     </div>
   </header>
@@ -1870,6 +1870,16 @@ header {
     const db = firebase.database();
 
     let currentSortColumn = '';
+    // Advance the starting team/source on each new app opening. Keep the
+    // counter on this device only; buyer records and cloud data are untouched.
+    const queueOpeningOffset = (() => {
+      try {
+        const key = 'buyerQueueOpeningOffset';
+        const next = (Number(localStorage.getItem(key)) || 0) + 1;
+        localStorage.setItem(key, String(next));
+        return next;
+      } catch (_) { return 1; }
+    })();
     let sortAscending = true;
     let allNotesExpanded = false;
     let currentPage = 1;
@@ -3172,6 +3182,10 @@ header {
         const groups = [...untouchedGroups.values()];
         for (const group of groups) group.sort((a, b) => b.originalIndex - a.originalIndex);
         groups.sort((a, b) => b[0].originalIndex - a[0].originalIndex);
+        if (groups.length > 1) {
+          const start = queueOpeningOffset % groups.length;
+          groups.push(...groups.splice(0, start));
+        }
         const queueRank = new Map();
         let position = 0;
         for (let row = 0; groups.some(group => row < group.length); row++) {
